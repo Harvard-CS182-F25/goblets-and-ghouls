@@ -32,6 +32,14 @@ pub fn setup_key_instructions(mut commands: Commands) {
                 },
                 TextLayout::new_with_justify(Justify::Right),
             ));
+            parent.spawn((
+                Text::new("P: Toggle Policy Visualization"),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextLayout::new_with_justify(Justify::Right),
+            ));
         });
 }
 

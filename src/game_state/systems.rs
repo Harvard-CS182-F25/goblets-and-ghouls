@@ -3,7 +3,9 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use crate::{
     agent::Action,
     core::{GGConfig, Policy},
-    game_state::{EntityType, GameState, Goblet, HoverBox, HoverBoxText, HoverCell},
+    game_state::{
+        EntityType, GameState, Goblet, HoverBox, HoverBoxText, HoverCell, VisualizePolicy,
+    },
     scene::GroundPlane,
 };
 
@@ -213,12 +215,21 @@ pub fn thicker_gizmos(mut store: ResMut<GizmoConfigStore>) {
     cfg.line.width = 6.0; // thicker lines (default is 2.0)
 }
 
+pub fn toggle_policy_visualization(mut visualize_policy: ResMut<VisualizePolicy>) {
+    visualize_policy.0 = !visualize_policy.0;
+}
+
 pub fn visualize_policy(
     mut gizmos: Gizmos,
     policy: Res<Policy>,
     game_state: Res<GameState>,
     config: Res<GGConfig>,
+    visualize_policy: Res<VisualizePolicy>,
 ) {
+    if !visualize_policy.0 {
+        return;
+    }
+
     let cell_size = config.world_generation.cell_size;
     let world_width = config.world_generation.world_width;
     let world_height = config.world_generation.world_height;

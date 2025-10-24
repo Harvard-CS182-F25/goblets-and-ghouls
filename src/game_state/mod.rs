@@ -1,6 +1,7 @@
 mod components;
 mod systems;
 
+use bevy::input::common_conditions::*;
 use bevy::prelude::*;
 
 pub use components::*;
@@ -16,6 +17,8 @@ impl Plugin for GameStatePlugin {
             world_hit: None,
         });
 
+        app.insert_resource(VisualizePolicy(false));
+
         app.add_systems(
             Startup,
             (systems::setup_hover_box, systems::thicker_gizmos)
@@ -28,6 +31,7 @@ impl Plugin for GameStatePlugin {
                 systems::update_hover_box,
                 systems::cursor_to_grid_cell,
                 systems::visualize_policy,
+                systems::toggle_policy_visualization.run_if(input_just_pressed(KeyCode::KeyP)),
             )
                 .run_if(|config: Res<GGConfig>| !config.headless),
         );

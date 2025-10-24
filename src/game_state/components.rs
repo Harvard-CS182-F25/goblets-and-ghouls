@@ -37,6 +37,10 @@ pub enum Agent {
     Ghost,
 }
 
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+pub struct VisualizePolicy(pub bool);
+
 #[gen_stub_pyclass]
 #[pyclass(name = "GameState")]
 #[derive(Debug, Clone, Resource)]
