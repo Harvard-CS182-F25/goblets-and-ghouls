@@ -49,6 +49,7 @@ impl AgentConfig {
 pub struct AgentPlugin;
 impl Plugin for AgentPlugin {
     fn build(&self, app: &mut App) {
+        app.add_message::<components::ActionMessage>();
         app.add_systems(PreStartup, spawn_agent_assets);
         app.add_systems(Startup, systems::spawn_agents.in_set(StartupSets::Agents));
         app.add_systems(Update, systems::step);

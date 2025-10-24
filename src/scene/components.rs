@@ -6,6 +6,10 @@ use crate::scene::WALL_HEIGHT;
 #[reflect(Component)]
 pub struct Wall;
 
+#[derive(Debug, Clone, Copy, Default, Component, Reflect)]
+#[reflect(Component)]
+pub struct GroundPlane;
+
 #[derive(Debug, Clone, Bundle, Default)]
 pub struct WallBundle {
     pub wall: Wall,

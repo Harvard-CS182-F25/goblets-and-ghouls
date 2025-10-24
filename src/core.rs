@@ -5,6 +5,7 @@ use pyo3_stub_gen::derive::gen_stub_pyclass;
 use serde::{Deserialize, Serialize};
 
 use crate::agent;
+use crate::agent::Action;
 use crate::camera;
 use crate::game_state;
 use crate::goblet;
@@ -40,6 +41,10 @@ pub struct GGConfig {
     pub headless: bool,
 }
 
+#[derive(Debug, Clone, Resource, Reflect)]
+#[reflect(Resource)]
+pub struct Policy(pub Vec<Action>);
+
 #[pymethods]
 impl GGConfig {
     fn __repr__(&self) -> PyResult<String> {
@@ -58,11 +63,13 @@ impl GGConfig {
 
 pub struct GGPlugin {
     pub config: GGConfig,
+    pub policy: Vec<Action>,
 }
 
 impl Plugin for GGPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.config.clone());
+        app.insert_resource(Policy(self.policy.clone()));
 
         app.add_plugins((
             agent::AgentPlugin,

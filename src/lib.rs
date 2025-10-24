@@ -7,15 +7,20 @@ mod goblet;
 mod scene;
 
 use bevy::prelude::*;
-use bevy::window::WindowCreated;
+use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use bevy_prng::WyRand;
 use bevy_rand::prelude::*;
-use pyo3::exceptions::PyRuntimeError;
+use numpy::{PyArray2, PyArrayMethods};
+use pyo3::exceptions::{PyRuntimeError, PyTypeError};
 use pyo3::prelude::*;
 use pyo3_stub_gen::{define_stub_info_gatherer, derive::gen_stub_pyfunction};
+use rand::SeedableRng;
 
-use crate::core::GGConfig;
+use crate::{
+    core::GGConfig,
+    game_state::{Board, GameState},
+};
 
 #[gen_stub_pyfunction]
 #[pyfunction(name = "parse_config")]
@@ -29,7 +34,7 @@ fn parse_config(config_path: &str) -> PyResult<GGConfig> {
     Ok(config)
 }
 
-fn generate_app(config: &mut GGConfig) -> App {
+fn generate_app(mut config: GGConfig, policy: Vec<agent::Action>) -> App {
     let mut app = App::new();
 
     if !config.headless {
@@ -60,6 +65,7 @@ fn generate_app(config: &mut GGConfig) -> App {
         EntropyPlugin::<WyRand>::with_seed(u64::from(seed).to_ne_bytes()),
         core::GGPlugin {
             config: config.clone(),
+            policy,
         },
     ));
 
@@ -68,25 +74,70 @@ fn generate_app(config: &mut GGConfig) -> App {
 
 #[gen_stub_pyfunction]
 #[pyfunction(name = "run")]
-fn run(mut config: GGConfig) -> PyResult<()> {
-    let mut app = generate_app(&mut config);
-    app.run();
-    Ok(())
+#[pyo3(signature=(config, policy=None))]
+fn run(
+    py: Python<'_>,
+    mut config: GGConfig,
+    policy: Option<Py<PyAny>>,
+) -> PyResult<Option<(GameState, u32)>> {
+    if !config.headless {
+        let policy_any = policy
+            .ok_or_else(|| PyTypeError::new_err("Policy must be provided in non-headless mode"))?;
+
+        let policy = if let Ok(arr_obj) = policy_any.cast_bound::<PyArray2<Py<PyAny>>>(py) {
+            let array = unsafe { arr_obj.as_array() };
+            let n_rows = array.shape()[0];
+            let n_cols = array.shape()[1];
+            let mut policy_vec: Vec<agent::Action> = Vec::with_capacity(n_rows * n_cols);
+            for row in 0..n_rows {
+                for col in 0..n_cols {
+                    let item = array.get([col, row]).unwrap();
+                    let action: agent::Action = item.extract(py)?;
+                    policy_vec.push(action);
+                }
+            }
+
+            Ok(policy_vec)
+        } else {
+            Err(PyTypeError::new_err(
+                "Policy must be a numpy.ndarray in non-headless mode",
+            ))
+        }?;
+
+        let mut app = generate_app(config, policy);
+        app.run();
+        Ok(None)
+    } else {
+        let seed = if let Some(seed) = config.seed {
+            seed
+        } else {
+            let seed = rand::random::<u16>().into();
+            config.seed = Some(seed);
+            seed
+        };
+        let mut rng = WyRand::from_seed(u64::from(seed).to_ne_bytes());
+        let initial_state = Board::new(&mut rng, &config).into();
+
+        Ok(Some((initial_state, seed)))
+    }
 }
 
 fn force_focus(
-    winit_windows: Option<NonSend<WinitWindows>>,
-    mut created: MessageReader<WindowCreated>,
+    mut done: Local<bool>,
+    winit: Option<NonSend<WinitWindows>>,
+    primary: Query<Entity, With<PrimaryWindow>>,
 ) {
-    let Some(winit_windows) = winit_windows else {
+    if *done {
+        return;
+    }
+    let Some(winit) = winit else { return }; // not present on wasm
+    let Ok(win_entity) = primary.single() else {
         return;
     };
-
-    for ev in created.read() {
-        if let Some(win) = winit_windows.get_window(ev.window) {
-            win.focus_window();
-        }
+    if let Some(w) = winit.get_window(win_entity) {
+        w.focus_window();
     }
+    *done = true;
 }
 
 #[pymodule]

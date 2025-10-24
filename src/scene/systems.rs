@@ -5,7 +5,7 @@ use bevy_rand::global::GlobalRng;
 use crate::{
     core::GGConfig,
     game_state::{Board, GameState},
-    scene::{WALL_HEIGHT, WallBundle, WallGraphicsAssets},
+    scene::{GroundPlane, WALL_HEIGHT, WallBundle, WallGraphicsAssets},
 };
 
 pub fn setup_key_instructions(mut commands: Commands) {
@@ -43,6 +43,7 @@ pub fn setup_scene(
 ) {
     let mut entity = commands.spawn((
         Name::new("Ground Plane"),
+        GroundPlane,
         Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::new(
             config.world_generation.world_width,
             1.0,
@@ -56,6 +57,7 @@ pub fn setup_scene(
         entity.insert((Mesh3d(mesh), MeshMaterial3d(material)));
     }
 }
+
 pub fn spawn_seed_text(mut commands: Commands, config: Res<GGConfig>) {
     let seed = config
         .seed

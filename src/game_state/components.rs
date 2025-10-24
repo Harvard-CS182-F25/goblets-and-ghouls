@@ -8,6 +8,18 @@ use rand::{
 };
 use std::collections::HashSet;
 
+#[derive(Component)]
+pub struct HoverBox;
+
+#[derive(Component)]
+pub struct HoverBoxText;
+
+#[derive(Resource, Default, Debug, Clone, Copy)]
+pub struct HoverCell {
+    pub cell: Option<UVec2>, // (col, row)
+    pub world_hit: Option<Vec3>,
+}
+
 #[gen_stub_pyclass_complex_enum]
 #[pyclass(name = "EntityType")]
 #[derive(Debug, Clone, Component, Reflect)]
@@ -293,7 +305,7 @@ impl Board {
             .choose_weighted(rng, |&(idx, _)| weights[idx])
             .expect("Should have at least one movement option");
 
-        self.transition_det(*action.clone(), active_player)
+        self.transition_det(**action, active_player)
     }
 
     pub fn transition_det(&self, action: Action, active_player: Agent) -> Self {
@@ -344,26 +356,30 @@ impl Board {
 
         board
     }
-}
 
-#[gen_stub_pymethods]
-impl Board {
-    fn __getitem__(&self, position: (usize, usize)) -> EntityType {
-        if self.wall_positions.contains(&position) {
+    pub fn get(&self, position: &(usize, usize)) -> EntityType {
+        if self.wall_positions.contains(position) {
             EntityType::Wall()
         } else if let Some((_, reward)) = self
             .goblets
             .iter()
             .map(|g| (g.position, g.reward))
-            .find(|(pos, _)| *pos == position)
+            .find(|(pos, _)| pos == position)
         {
             EntityType::Goblet(reward)
-        } else if self.agent_position == position {
+        } else if self.agent_position == *position {
             EntityType::Agent()
-        } else if self.ghost_position == Some(position) {
+        } else if self.ghost_position == Some(*position) {
             EntityType::Ghost()
         } else {
             EntityType::Empty()
         }
+    }
+}
+
+#[gen_stub_pymethods]
+impl Board {
+    fn __getitem__(&self, position: (usize, usize)) -> EntityType {
+        self.get(&position)
     }
 }

@@ -28,25 +28,27 @@ pub fn spawn_goblets(
 ) {
     for (i, &Goblet { position, reward }) in state.board.goblets.iter().enumerate() {
         let goblet_name = format!("Goblet {}", i + 1);
-        let position = cell_to_world(
+        let world_position = cell_to_world(
             position,
             config.world_generation.cell_size,
             config.world_generation.world_width,
             config.world_generation.world_height,
         );
-        info!("Spawning Goblet at position: {position}");
+        info!("Spawning Goblet at world position: {world_position} {position:?}");
 
-        let mut entity = commands.spawn(GobletBundle::new(&goblet_name, position, reward));
+        let mut entity = commands.spawn(GobletBundle::new(&goblet_name, world_position, reward));
 
         if let Some(goblet_graphics) = &goblet_graphics
             && let Some(meshes_ref) = &mut meshes
         {
-            let mesh = meshes_ref.add(Cylinder::new(config.world_generation.cell_size / 2.0, 1.0));
+            let mesh = meshes_ref.add(Cylinder::new(config.world_generation.cell_size / 2.0, 3.0));
+            let material = if reward > 0 {
+                goblet_graphics.material.clone()
+            } else {
+                goblet_graphics.false_material.clone()
+            };
 
-            entity.insert((
-                Mesh3d(mesh.clone()),
-                MeshMaterial3d(goblet_graphics.material.clone()),
-            ));
+            entity.insert((Mesh3d(mesh.clone()), MeshMaterial3d(material)));
         }
     }
 }
