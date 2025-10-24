@@ -1,0 +1,369 @@
+use crate::{agent::Action, core::GGConfig};
+use bevy::prelude::*;
+use pyo3::prelude::*;
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_complex_enum, gen_stub_pymethods};
+use rand::{
+    Rng,
+    seq::{IndexedRandom, IteratorRandom},
+};
+use std::collections::HashSet;
+
+#[gen_stub_pyclass_complex_enum]
+#[pyclass(name = "EntityType")]
+#[derive(Debug, Clone, Component, Reflect)]
+pub enum EntityType {
+    Empty(),
+    Wall(),
+    Goblet(i32),
+    Agent(),
+    Ghost(),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Agent {
+    Player,
+    Ghost,
+}
+
+#[gen_stub_pyclass]
+#[pyclass(name = "GameState")]
+#[derive(Debug, Clone, Resource)]
+pub struct GameState {
+    #[pyo3(get)]
+    pub board: Board,
+    #[pyo3(get)]
+    pub reward: i32,
+    #[pyo3(get)]
+    pub done: bool,
+    pub active_player: Agent,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl GameState {
+    fn all_states(&self) -> Vec<GameState> {
+        let (width, height) = (self.board.width, self.board.height);
+        let mut states = Vec::new();
+
+        for x in 0..width {
+            for y in 0..height {
+                let mut new_board = self.board.clone();
+                new_board.agent_position = (x, y);
+                let new_state = GameState::from(new_board);
+                states.push(new_state);
+            }
+        }
+
+        if self.board.ghost_position.is_some() {
+            for x in 0..width {
+                for y in 0..height {
+                    let mut new_board = self.board.clone();
+                    new_board.ghost_position = Some((x, y));
+                    let new_state = GameState::from(new_board);
+                    states.push(new_state);
+                }
+            }
+        }
+
+        states
+    }
+
+    fn next_state(&self, action: Action) -> GameState {
+        let board = self.board.transition_det(action, Agent::Player);
+        GameState::from(board)
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("GameState({})", self.__str__()?))
+    }
+
+    fn __str__(&self) -> PyResult<String> {
+        Ok(format!(
+            "GameState(agent_position={:?}, ghost_position={:?}, reward={}, done={})",
+            self.board.agent_position, self.board.ghost_position, self.reward, self.done
+        ))
+    }
+}
+
+impl From<Board> for GameState {
+    fn from(board: Board) -> Self {
+        let reward = if let Some(ghost_position) = board.ghost_position
+            && board.agent_position == ghost_position
+        {
+            i32::MIN
+        } else if let Some((_, value)) = board
+            .goblets
+            .iter()
+            .map(|g| (g.position, g.reward))
+            .find(|(pos, _)| *pos == board.agent_position)
+        {
+            value
+        } else {
+            0
+        };
+
+        let done = reward != 0;
+
+        Self {
+            board,
+            reward,
+            done,
+            active_player: Agent::Player,
+        }
+    }
+}
+
+impl GameState {
+    pub fn transition(&self, mut rng: &mut impl Rng, action: Action, config: &GGConfig) -> Self {
+        let board = self
+            .board
+            .transition(&mut rng, action, self.active_player, config);
+        let mut state = GameState::from(board);
+
+        let next_player = match self.active_player {
+            Agent::Player => {
+                if config.agent.spawn_ghost {
+                    Agent::Ghost
+                } else {
+                    Agent::Player
+                }
+            }
+            Agent::Ghost => Agent::Player,
+        };
+        state.active_player = next_player;
+        state
+    }
+}
+
+#[gen_stub_pyclass]
+#[pyclass(name = "Goblet")]
+#[derive(Debug, Clone)]
+pub struct Goblet {
+    #[pyo3(get)]
+    pub position: (usize, usize),
+    #[pyo3(get)]
+    pub reward: i32,
+}
+
+#[gen_stub_pyclass]
+#[pyclass(name = "Board")]
+#[derive(Debug, Clone, Component)]
+pub struct Board {
+    #[pyo3(get)]
+    pub agent_position: (usize, usize),
+    #[pyo3(get)]
+    pub ghost_position: Option<(usize, usize)>,
+    #[pyo3(get)]
+    pub goblets: Vec<Goblet>,
+    #[pyo3(get)]
+    pub wall_positions: HashSet<(usize, usize)>,
+    #[pyo3(get)]
+    pub width: usize,
+    #[pyo3(get)]
+    pub height: usize,
+}
+
+fn get_circle_indices(
+    center: (usize, usize),
+    radius: usize,
+    width: usize,
+    height: usize,
+) -> Vec<(usize, usize)> {
+    let mut indices = Vec::new();
+    let (cx, cy) = center;
+    let r_sq = (radius * radius) as isize;
+
+    for y in cy.saturating_sub(radius - 1)..(cy + radius).min(height - 1) {
+        for x in cx.saturating_sub(radius - 1)..(cx + radius).min(width - 1) {
+            let dx = x as isize - cx as isize;
+            let dy = y as isize - cy as isize;
+            if dx * dx + dy * dy <= r_sq {
+                indices.push((x, y));
+            }
+        }
+    }
+
+    indices
+}
+
+impl Board {
+    pub fn new(rng: &mut impl Rng, config: &GGConfig) -> Self {
+        let width = (config.world_generation.world_width / config.world_generation.cell_size)
+            .round() as usize;
+        let height = (config.world_generation.world_height / config.world_generation.cell_size)
+            .round() as usize;
+        let num_obstacles = config.world_generation.num_obstacles;
+
+        let free_positions = (0..height)
+            .flat_map(|y| (0..width).map(move |x| (x, y)))
+            .collect::<Vec<_>>();
+
+        let wall_positions = free_positions
+            .iter()
+            .cloned()
+            .choose_multiple(rng, num_obstacles)
+            .iter()
+            .flat_map(|&pos| {
+                get_circle_indices(
+                    pos,
+                    rng.random_range(1..=config.world_generation.obstacle_radius_cells),
+                    width,
+                    height,
+                )
+            })
+            .chain((0..width).flat_map(|x| vec![(x, 0), (x, height - 1)]))
+            .chain((0..height).flat_map(|y| vec![(0, y), (width - 1, y)]))
+            .collect::<HashSet<_>>();
+
+        let free_positions = free_positions
+            .into_iter()
+            .filter(|pos| !wall_positions.contains(pos))
+            .collect::<Vec<_>>();
+
+        let agent_position = free_positions
+            .choose(rng)
+            .cloned()
+            .expect("No free positions available");
+
+        let free_positions = free_positions
+            .into_iter()
+            .filter(|&pos| pos != agent_position)
+            .collect::<Vec<_>>();
+
+        let ghost_position = if config.agent.spawn_ghost {
+            Some(
+                free_positions
+                    .choose(rng)
+                    .cloned()
+                    .expect("No free positions available for ghost"),
+            )
+        } else {
+            None
+        };
+
+        let free_positions = free_positions
+            .into_iter()
+            .filter(|&pos| Some(pos) != ghost_position)
+            .collect::<Vec<_>>();
+
+        let goblets = (0..config.goblets.number)
+            .filter_map(|_| {
+                free_positions.choose(rng).cloned().map(|position| Goblet {
+                    position,
+                    reward: rng.random_range(
+                        -(config.goblets.max_reward as i32)..=(config.goblets.max_reward as i32),
+                    ),
+                })
+            })
+            .collect::<Vec<_>>();
+
+        Self {
+            agent_position,
+            ghost_position,
+            goblets,
+            wall_positions,
+            width,
+            height,
+        }
+    }
+
+    pub fn transition(
+        &self,
+        rng: &mut impl Rng,
+        action: Action,
+        active_player: Agent,
+        config: &GGConfig,
+    ) -> Board {
+        const ACTIONS: [Action; 4] = [Action::Up, Action::Right, Action::Down, Action::Left];
+        let rotated_actions = match action {
+            Action::Up => ACTIONS,
+            Action::Right => [ACTIONS[1], ACTIONS[2], ACTIONS[3], ACTIONS[0]],
+            Action::Down => [ACTIONS[2], ACTIONS[3], ACTIONS[0], ACTIONS[1]],
+            Action::Left => [ACTIONS[3], ACTIONS[0], ACTIONS[1], ACTIONS[2]],
+        };
+
+        let weights = match active_player {
+            Agent::Player => config.agent.transition,
+            Agent::Ghost => [1.0, 0.0, 0.0, 0.0],
+        };
+
+        let enumerated_actions: Vec<(usize, &Action)> =
+            rotated_actions.iter().enumerate().collect::<Vec<_>>();
+        let (_, action) = enumerated_actions
+            .choose_weighted(rng, |&(idx, _)| weights[idx])
+            .expect("Should have at least one movement option");
+
+        self.transition_det(*action.clone(), active_player)
+    }
+
+    pub fn transition_det(&self, action: Action, active_player: Agent) -> Self {
+        let (dx, dy) = match action {
+            Action::Up => (0, -1),
+            Action::Right => (1, 0),
+            Action::Down => (0, 1),
+            Action::Left => (-1, 0),
+        };
+
+        let mut board = self.clone();
+        match active_player {
+            Agent::Player => {
+                let new_x = board
+                    .agent_position
+                    .0
+                    .saturating_add_signed(dx)
+                    .clamp(0, board.width - 1);
+
+                let new_y = board
+                    .agent_position
+                    .1
+                    .saturating_add_signed(dy)
+                    .clamp(0, board.height - 1);
+
+                let new_position = (new_x, new_y);
+                if !board.wall_positions.contains(&new_position) {
+                    board.agent_position = new_position;
+                }
+            }
+            Agent::Ghost => {
+                if let Some(ghost_pos) = board.ghost_position {
+                    let new_x: usize = ghost_pos
+                        .0
+                        .saturating_add_signed(dx)
+                        .clamp(0, board.width - 1);
+
+                    let new_y = ghost_pos
+                        .1
+                        .saturating_add_signed(dy)
+                        .clamp(0, board.height - 1);
+                    let new_position = (new_x, new_y);
+
+                    board.ghost_position = Some(new_position);
+                }
+            }
+        };
+
+        board
+    }
+}
+
+#[gen_stub_pymethods]
+impl Board {
+    fn __getitem__(&self, position: (usize, usize)) -> EntityType {
+        if self.wall_positions.contains(&position) {
+            EntityType::Wall()
+        } else if let Some((_, reward)) = self
+            .goblets
+            .iter()
+            .map(|g| (g.position, g.reward))
+            .find(|(pos, _)| *pos == position)
+        {
+            EntityType::Goblet(reward)
+        } else if self.agent_position == position {
+            EntityType::Agent()
+        } else if self.ghost_position == Some(position) {
+            EntityType::Ghost()
+        } else {
+            EntityType::Empty()
+        }
+    }
+}
