@@ -28,7 +28,7 @@ jobs:
             # Rust target cache (host). Helps if any host cargo runs occur.
             - uses: Swatinem/rust-cache@v2
               with:
-                  prefix-key: maze-core
+                  prefix-key: gg-core
                   workspaces: |
                       . -> target
 
@@ -89,7 +89,7 @@ jobs:
               run: |
                   . .venv/bin/activate
                   pip install dist/*.whl
-                  python -c "import maze_core as m; print('import ok:', m.__file__)"
+                  python -c "import gg_core as m; print('import ok:', m.__file__)"
                   # If stub_gen is a Rust bin, avoid sccache requirement for this one step:
                   env -u RUSTC_WRAPPER cargo run --bin stub_gen --no-default-features --release
 
@@ -102,7 +102,7 @@ jobs:
               shell: bash
               run: |
                   shopt -s nullglob
-                  files=(python/maze_core/*.pyi)
+                  files=(python/gg_core/*.pyi)
                   if ((${#files[@]})); then
                     echo "present=true"  >> "$GITHUB_OUTPUT"
                   else
@@ -112,7 +112,7 @@ jobs:
             - uses: actions/upload-artifact@v4
               with:
                   name: stubs
-                  path: python/maze_core/*.pyi
+                  path: python/gg_core/*.pyi
 
     # ---------- WINDOWS ----------
     build-windows:
@@ -133,7 +133,7 @@ jobs:
 
             - uses: Swatinem/rust-cache@v2
               with:
-                  prefix-key: maze-core
+                  prefix-key: gg-core
                   workspaces: |
                       . -> target
 
@@ -142,7 +142,7 @@ jobs:
               if: ${{ needs.build-linux.outputs.stubs_present == 'true' }}
               with:
                   name: stubs
-                  path: python/maze_core
+                  path: python/gg_core
 
             # Build wheels on Windows host
             - name: Build wheels (Windows)
@@ -168,7 +168,7 @@ jobs:
                   $whl = Get-ChildItem dist\*win_amd64*.whl | Select-Object -First 1
                   if (-not $whl) { Write-Error "No wheel found in dist\"; exit 1 }
                   .\.venv\Scripts\pip.exe install "$($whl.FullName)"
-                  .\.venv\Scripts\python.exe -c "import maze_core; print('import ok')"
+                  .\.venv\Scripts\python.exe -c "import gg_core; print('import ok')"
 
             - uses: actions/upload-artifact@v4
               with:
@@ -193,7 +193,7 @@ jobs:
 
             - uses: Swatinem/rust-cache@v2
               with:
-                  prefix-key: maze-core
+                  prefix-key: gg-core
                   workspaces: |
                       . -> target
 
@@ -202,7 +202,7 @@ jobs:
               if: ${{ needs.build-linux.outputs.stubs_present == 'true' }}
               with:
                   name: stubs
-                  path: python/maze_core
+                  path: python/gg_core
 
             - name: Build wheels (macOS universal2)
               uses: PyO3/maturin-action@v1
@@ -217,7 +217,7 @@ jobs:
                   . .venv/bin/activate
                   pip install -U pip
                   pip install dist/*.whl
-                  python -c "import maze_core; print('import ok')"
+                  python -c "import gg_core; print('import ok')"
 
             - uses: actions/upload-artifact@v4
               with:
@@ -261,7 +261,7 @@ jobs:
                   BASE="/${GITHUB_REPOSITORY#*/}/wheels/"
                   echo "simple503 base-url: $BASE"
                   simple503 --sort -B "$BASE" site/wheels
-                  echo "<h1>Private Wheels Index -- CS182 maze</h1>" > site/index.html
+                  echo "<h1>Private Wheels Index -- CS182 Goblets and Ghouls</h1>" > site/index.html
                   touch site/.nojekyll
 
             - uses: actions/configure-pages@v5
