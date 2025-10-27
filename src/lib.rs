@@ -53,11 +53,11 @@ fn generate_app(mut config: GGConfig, policy: Vec<agent::Action>) -> App {
         app.add_plugins(debug::DebugPlugin);
     }
 
-    let seed = if let Some(seed) = config.seed {
+    let seed = if let Some(seed) = config.generation_seed {
         seed
     } else {
         let seed = rand::random::<u16>().into();
-        config.seed = Some(seed);
+        config.generation_seed = Some(seed);
         seed
     };
 
@@ -79,7 +79,7 @@ fn run(
     py: Python<'_>,
     mut config: GGConfig,
     policy: Option<Py<PyAny>>,
-) -> PyResult<Option<(GameState, u32)>> {
+) -> PyResult<Option<(GameState, u32, u64)>> {
     if !config.headless {
         let policy_any = policy
             .ok_or_else(|| PyTypeError::new_err("Policy must be provided in non-headless mode"))?;
@@ -108,17 +108,23 @@ fn run(
         app.run();
         Ok(None)
     } else {
-        let seed = if let Some(seed) = config.seed {
+        let generation_seed = if let Some(seed) = config.generation_seed {
             seed
         } else {
             let seed = rand::random::<u16>().into();
-            config.seed = Some(seed);
+            config.generation_seed = Some(seed);
             seed
         };
-        let mut rng = WyRand::from_seed(u64::from(seed).to_ne_bytes());
-        let initial_state = Board::new(&mut rng, &config).into();
+        let mut rng = WyRand::from_seed(u64::from(generation_seed).to_ne_bytes());
+        let mut initial_state = GameState::from(Board::new(&mut rng, &config)).with_config(&config);
 
-        Ok(Some((initial_state, seed)))
+        if let Some(episode_seed) = config.episode_seed {
+            initial_state = initial_state.with_seed(episode_seed.into());
+        }
+
+        let episode_seed = initial_state.rng_seed;
+
+        Ok(Some((initial_state, generation_seed, episode_seed)))
     }
 }
 

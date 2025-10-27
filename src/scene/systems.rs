@@ -68,7 +68,7 @@ pub fn setup_scene(
 
 pub fn spawn_seed_text(mut commands: Commands, config: Res<GGConfig>) {
     let seed = config
-        .seed
+        .generation_seed
         .expect("Should have generated a seed before spawning seed text");
 
     if config.headless {

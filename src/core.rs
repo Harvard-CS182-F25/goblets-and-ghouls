@@ -34,7 +34,9 @@ pub struct GGConfig {
     #[pyo3(get, set)]
     pub world_generation: scene::WorldGenerationConfig,
     #[pyo3(get, set)]
-    pub seed: Option<u32>,
+    pub generation_seed: Option<u32>,
+    #[pyo3(get, set)]
+    pub episode_seed: Option<u32>,
     #[pyo3(get, set)]
     pub debug: bool,
     #[pyo3(get, set)]

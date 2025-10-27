@@ -1,6 +1,4 @@
 use bevy::prelude::*;
-use bevy_prng::WyRand;
-use bevy_rand::global::GlobalRng;
 
 use crate::agent::{ActionMessage, Agent, GhostAgent};
 use crate::core::GGConfig;
@@ -89,13 +87,12 @@ pub fn spawn_agents(
 pub fn step(
     mut message_reader: MessageReader<ActionMessage>,
     mut query: Query<(&mut Transform, Option<&Agent>, Option<&GhostAgent>)>,
-    mut rng: Single<&mut WyRand, With<GlobalRng>>,
     mut game_state: ResMut<GameState>,
-    config: Res<GGConfig>,
 ) {
     for &ActionMessage { action, entity } in message_reader.read() {
         if let Ok((mut transform, is_agent, is_ghost)) = query.get_mut(entity) {
-            let state = game_state.transition(&mut rng, action, &config);
+            let state = game_state.step(action);
+
             transform.translation = cell_to_world(
                 if is_agent.is_some() {
                     state.board.agent_position
@@ -107,9 +104,9 @@ pub fn step(
                 } else {
                     continue;
                 },
-                config.world_generation.cell_size,
-                config.world_generation.world_width,
-                config.world_generation.world_height,
+                game_state.config.world_generation.cell_size,
+                game_state.config.world_generation.world_width,
+                game_state.config.world_generation.world_height,
             );
 
             *game_state = state;

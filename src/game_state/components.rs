@@ -1,9 +1,10 @@
 use crate::{agent::Action, core::GGConfig};
 use bevy::prelude::*;
+use bevy_prng::WyRand;
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_complex_enum, gen_stub_pymethods};
 use rand::{
-    Rng,
+    Rng, SeedableRng,
     seq::{IndexedRandom, IteratorRandom},
 };
 use std::collections::HashSet;
@@ -52,6 +53,11 @@ pub struct GameState {
     #[pyo3(get)]
     pub done: bool,
     pub active_player: Agent,
+
+    pub initial_board: Box<Board>,
+    pub rng: WyRand,
+    pub rng_seed: u64,
+    pub config: GGConfig,
 }
 
 #[gen_stub_pymethods]
@@ -89,6 +95,33 @@ impl GameState {
         GameState::from(board)
     }
 
+    pub fn with_seed(&self, seed: u64) -> GameState {
+        let mut new_state = self.clone();
+        new_state.rng_seed = seed;
+        new_state.rng = WyRand::from_seed(seed.to_ne_bytes());
+        new_state
+    }
+
+    pub fn step(&mut self, action: Action) -> GameState {
+        self.transition(action)
+    }
+
+    fn reset(&self) -> (GameState, u64) {
+        let state = GameState::from((*self.initial_board).clone())
+            .with_initial_board(&self.initial_board)
+            .with_config(&self.config);
+
+        let seed = if let Some(seed) = self.config.episode_seed {
+            seed as u64
+        } else {
+            rand::random::<u32>().into()
+        };
+
+        let state = state.with_seed(seed);
+
+        (state, seed)
+    }
+
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("GameState({})", self.__str__()?))
     }
@@ -120,25 +153,38 @@ impl From<Board> for GameState {
 
         let done = reward != 0;
 
+        let seed = rand::random::<u32>();
+
         Self {
-            board,
+            board: board.clone(),
             reward,
             done,
             active_player: Agent::Player,
+            initial_board: Box::new(board),
+            rng: WyRand::default(),
+            rng_seed: seed.into(),
+            config: GGConfig::default(),
         }
     }
 }
 
 impl GameState {
-    pub fn transition(&self, mut rng: &mut impl Rng, action: Action, config: &GGConfig) -> Self {
+    pub fn with_initial_board(mut self, board: &Board) -> Self {
+        self.initial_board = Box::new(board.clone());
+        self
+    }
+
+    pub fn transition(&mut self, action: Action) -> Self {
         let board = self
             .board
-            .transition(&mut rng, action, self.active_player, config);
-        let mut state = GameState::from(board);
+            .transition(&mut self.rng, action, self.active_player, &self.config);
+        let mut state = GameState::from(board)
+            .with_initial_board(&self.initial_board)
+            .with_config(&self.config);
 
         let next_player = match self.active_player {
             Agent::Player => {
-                if config.agent.spawn_ghost {
+                if self.config.agent.spawn_ghost {
                     Agent::Ghost
                 } else {
                     Agent::Player
@@ -148,6 +194,16 @@ impl GameState {
         };
         state.active_player = next_player;
         state
+    }
+
+    pub fn with_config(mut self, config: &GGConfig) -> Self {
+        self.config = config.clone();
+
+        if let Some(seed) = config.episode_seed {
+            self.with_seed(seed as u64);
+        }
+
+        self
     }
 }
 
