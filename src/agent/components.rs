@@ -87,9 +87,8 @@ impl Action {
 }
 
 #[derive(Debug, Clone, PartialEq, Message)]
-pub struct ActionMessage {
+pub struct PlayerActionMessage {
     pub action: Action,
-    pub entity: Entity,
 }
 
 #[derive(Debug, Clone, Bundle, Derivative)]

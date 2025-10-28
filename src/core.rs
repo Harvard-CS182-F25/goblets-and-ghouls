@@ -30,9 +30,12 @@ pub struct GGConfig {
     #[pyo3(get, set)]
     pub camera: camera::CameraConfig,
     #[pyo3(get, set)]
-    pub goblets: crate::goblet::GobletConfig,
+    pub goblets: goblet::GobletConfig,
     #[pyo3(get, set)]
     pub world_generation: scene::WorldGenerationConfig,
+    #[pyo3(get, set)]
+    #[derivative(Default(value = "1.0"))]
+    pub render_delay_secs: f32,
     #[pyo3(get, set)]
     pub generation_seed: Option<u32>,
     #[pyo3(get, set)]
@@ -46,6 +49,10 @@ pub struct GGConfig {
 #[derive(Debug, Clone, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct Policy(pub Vec<Action>);
+
+#[derive(Debug, Clone, Resource, Reflect)]
+#[reflect(Resource)]
+pub struct PolicyTimer(pub Timer);
 
 #[pymethods]
 impl GGConfig {
@@ -72,6 +79,10 @@ impl Plugin for GGPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.config.clone());
         app.insert_resource(Policy(self.policy.clone()));
+        app.insert_resource(PolicyTimer(Timer::from_seconds(
+            self.config.render_delay_secs,
+            TimerMode::Repeating,
+        )));
 
         app.add_plugins((
             agent::AgentPlugin,

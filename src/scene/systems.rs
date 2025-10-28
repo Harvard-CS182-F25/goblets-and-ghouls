@@ -67,9 +67,12 @@ pub fn setup_scene(
 }
 
 pub fn spawn_seed_text(mut commands: Commands, config: Res<GGConfig>) {
-    let seed = config
+    let generation_seed = config
         .generation_seed
-        .expect("Should have generated a seed before spawning seed text");
+        .expect("Should have generated a generation seed before spawning seed text");
+    let episode_seed = config
+        .episode_seed
+        .expect("Should have generated an episode seed before spawning seed text");
 
     if config.headless {
         return;
@@ -91,7 +94,16 @@ pub fn spawn_seed_text(mut commands: Commands, config: Res<GGConfig>) {
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new(format! {"Seed: {}", seed}),
+                Text::new(format! {"Generation Seed: {}", generation_seed}),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextLayout::new_with_justify(Justify::Right),
+            ));
+
+            parent.spawn((
+                Text::new(format! {"Episode Seed: {}", episode_seed}),
                 TextFont {
                     font_size: 14.0,
                     ..default()
@@ -108,7 +120,14 @@ pub fn spawn_walls(
     graphics: Option<Res<WallGraphicsAssets>>,
     config: Res<GGConfig>,
 ) {
-    let game_state: GameState = Board::new(&mut rng, &config).into();
+    let game_state = GameState::from(Board::new(&mut rng, &config))
+        .with_config(&config)
+        .with_seed(
+            config
+                .episode_seed
+                .expect("Should have generated an episode seed before spawning walls")
+                as u64,
+        );
 
     if !config.headless {
         let cell = config.world_generation.cell_size;

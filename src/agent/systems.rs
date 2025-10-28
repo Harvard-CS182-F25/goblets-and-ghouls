@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 
-use crate::agent::{ActionMessage, Agent, GhostAgent};
-use crate::core::GGConfig;
+use crate::agent::{Agent, GhostAgent, PlayerActionMessage};
+use crate::core::{GGConfig, Policy, PolicyTimer};
 use crate::game_state::GameState;
+use crate::scene::WALL_HEIGHT;
 
 use super::components::{AgentBundle, GhostAgentBundle};
 use super::visual::AgentGraphicsAssets;
@@ -12,10 +13,11 @@ pub fn cell_to_world(
     cell_size: f32,
     world_width: f32,
     world_height: f32,
+    is_ghost: bool,
 ) -> Vec3 {
     Vec3::new(
         position.0 as f32 * cell_size + cell_size / 2.0 - world_width / 2.0,
-        0.0,
+        if is_ghost { WALL_HEIGHT + 1.0 } else { 0.0 },
         position.1 as f32 * cell_size + cell_size / 2.0 - world_height / 2.0,
     )
 }
@@ -32,6 +34,7 @@ pub fn spawn_agents(
         config.world_generation.cell_size,
         config.world_generation.world_width,
         config.world_generation.world_height,
+        false,
     );
 
     info!("Spawning agent at position: {:?}", agent_world_position);
@@ -46,6 +49,7 @@ pub fn spawn_agents(
             config.world_generation.cell_size,
             config.world_generation.world_width,
             config.world_generation.world_height,
+            true,
         );
         info!(
             "Spawning ghost agent at position: {:?}",
@@ -83,16 +87,39 @@ pub fn spawn_agents(
     }
 }
 
+pub fn evaluate_policy(
+    mut message_writer: MessageWriter<PlayerActionMessage>,
+    mut timer: ResMut<PolicyTimer>,
+    time: Res<Time>,
+    game_state: Res<GameState>,
+    policy: Res<Policy>,
+) {
+    timer.0.tick(time.delta());
+    if !timer.0.is_finished() {
+        return;
+    }
+
+    let agent_position = game_state.board.agent_position;
+    let action_index = agent_position.0 + agent_position.1 * game_state.board.width;
+    let action = policy
+        .0
+        .get(action_index)
+        .cloned()
+        .expect("Policy action out of bounds");
+
+    message_writer.write(PlayerActionMessage { action });
+}
+
 #[allow(clippy::type_complexity)]
 pub fn step(
-    mut message_reader: MessageReader<ActionMessage>,
+    mut message_reader: MessageReader<PlayerActionMessage>,
     mut query: Query<(&mut Transform, Option<&Agent>, Option<&GhostAgent>)>,
     mut game_state: ResMut<GameState>,
 ) {
-    for &ActionMessage { action, entity } in message_reader.read() {
-        if let Ok((mut transform, is_agent, is_ghost)) = query.get_mut(entity) {
-            let state = game_state.step(action);
+    for &PlayerActionMessage { action } in message_reader.read() {
+        let state = game_state.step(action);
 
+        for (mut transform, is_agent, is_ghost) in query.iter_mut() {
             transform.translation = cell_to_world(
                 if is_agent.is_some() {
                     state.board.agent_position
@@ -107,9 +134,10 @@ pub fn step(
                 game_state.config.world_generation.cell_size,
                 game_state.config.world_generation.world_width,
                 game_state.config.world_generation.world_height,
+                is_ghost.is_some(),
             );
-
-            *game_state = state;
         }
+
+        *game_state = state;
     }
 }

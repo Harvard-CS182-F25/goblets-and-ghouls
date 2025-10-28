@@ -1,4 +1,7 @@
-use crate::{agent::Action, core::GGConfig};
+use crate::{
+    agent::{Action, GhostPolicy},
+    core::GGConfig,
+};
 use bevy::prelude::*;
 use bevy_prng::WyRand;
 use pyo3::prelude::*;
@@ -103,7 +106,9 @@ impl GameState {
     }
 
     pub fn step(&mut self, action: Action) -> GameState {
-        self.transition(action)
+        let state = self.transition(action);
+        assert_eq!(state.active_player, Agent::Player);
+        state
     }
 
     fn reset(&self) -> (GameState, u64) {
@@ -175,25 +180,58 @@ impl GameState {
     }
 
     pub fn transition(&mut self, action: Action) -> Self {
+        if self.done {
+            return self.clone();
+        }
+
         let board = self
             .board
             .transition(&mut self.rng, action, self.active_player, &self.config);
-        let mut state = GameState::from(board)
+
+        let state = GameState::from(board)
             .with_initial_board(&self.initial_board)
             .with_config(&self.config);
 
-        let next_player = match self.active_player {
-            Agent::Player => {
-                if self.config.agent.spawn_ghost {
-                    Agent::Ghost
+        if state.done {
+            return state;
+        }
+
+        let ghost_action = match self.config.agent.ghost_policy {
+            Some(GhostPolicy::Random) => {
+                let actions = [Action::Up, Action::Right, Action::Down, Action::Left];
+                *actions
+                    .choose(&mut self.rng)
+                    .expect("Should have at least one action")
+            }
+            Some(GhostPolicy::Chaser) => {
+                let ghost_pos = self
+                    .board
+                    .ghost_position
+                    .expect("Ghost position should be present");
+                let agent_pos = self.board.agent_position;
+
+                let dx = agent_pos.0 as isize - ghost_pos.0 as isize;
+                let dy = agent_pos.1 as isize - ghost_pos.1 as isize;
+
+                if dx.abs() > dy.abs() {
+                    if dx > 0 { Action::Right } else { Action::Left }
+                } else if dy > 0 {
+                    Action::Down
                 } else {
-                    Agent::Player
+                    Action::Up
                 }
             }
-            Agent::Ghost => Agent::Player,
+            None => {
+                assert!(self.board.ghost_position.is_none());
+                return state;
+            }
         };
-        state.active_player = next_player;
-        state
+
+        let board = state.board.transition_det(ghost_action, Agent::Ghost);
+
+        GameState::from(board)
+            .with_initial_board(&self.initial_board)
+            .with_config(&self.config)
     }
 
     pub fn with_config(mut self, config: &GGConfig) -> Self {
@@ -302,7 +340,7 @@ impl Board {
             .filter(|&pos| pos != agent_position)
             .collect::<Vec<_>>();
 
-        let ghost_position = if config.agent.spawn_ghost {
+        let ghost_position = if config.agent.ghost_policy.is_some() {
             Some(
                 free_positions
                     .choose(rng)
@@ -361,11 +399,11 @@ impl Board {
 
         let enumerated_actions: Vec<(usize, &Action)> =
             rotated_actions.iter().enumerate().collect::<Vec<_>>();
-        let (_, action) = enumerated_actions
+        let (_, chosen_action) = enumerated_actions
             .choose_weighted(rng, |&(idx, _)| weights[idx])
             .expect("Should have at least one movement option");
 
-        self.transition_det(**action, active_player)
+        self.transition_det(**chosen_action, active_player)
     }
 
     pub fn transition_det(&self, action: Action, active_player: Agent) -> Self {
