@@ -1,0 +1,30 @@
+[package]
+name = "gg_core_py"
+version = "0.2.0"
+edition = "2024"
+
+[lib]
+name = "gg_core_py"
+crate-type = ["cdylib", "rlib"]
+
+[build-dependencies]
+pyo3-build-config = "0.26"
+
+[features]
+pymodule = ["pyo3/extension-module", "pyo3/abi3-py310"]
+bevy = ["dep:gg_bevy"]
+default = []
+
+[dependencies]
+gg_core = { path = "../gg_core" }
+gg_bevy = { path = "../gg_bevy", optional = true }
+pyo3 = { version = "0.27", features = ["serde"] }
+pyo3-stub-gen = "0.14.0"
+numpy = "0.27.0"
+rand = "0.9.2"
+wyrand = "0.3.2"
+serde_yaml = "0.9.34"
+
+[[bin]]
+name = "stub_gen"
+doc = false

@@ -1,0 +1,5 @@
+width: 3
+height: 3
+walls:
+  - [1, 1]
+agent_position: [1, 1]

@@ -1,0 +1,284 @@
+use bevy::ecs::system::EntityCommands;
+use bevy::prelude::*;
+
+use crate::agent::AgentGraphicsAssets;
+use crate::coords::{cell_to_world, world_dimensions};
+use crate::goblet::GobletGraphicsAssets;
+use crate::scene::{GroundPlane, WALL_HEIGHT, WallGraphicsAssets};
+
+use super::{CELL_SIZE, EditorBoard, EditorState, EditorTile};
+
+/// Marker: the tile entity at board position `(row, col)`.
+#[derive(Component)]
+pub struct EditorTileEntity {
+    pub row: usize,
+    pub col: usize,
+}
+
+/// Must run in `PreStartup` — `setup_tiles` (in `Startup`) needs these
+/// resources to already exist, and `Commands`-queued inserts aren't applied
+/// until the end of the schedule they're queued in.
+pub fn init_visual_assets(mut commands: Commands) {
+    commands.init_resource::<WallGraphicsAssets>();
+    commands.init_resource::<AgentGraphicsAssets>();
+    commands.init_resource::<GobletGraphicsAssets>();
+}
+
+pub fn setup_scene(
+    mut commands: Commands,
+    board: Res<EditorBoard>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.insert_resource(AmbientLight {
+        color: Color::WHITE,
+        brightness: 1_500.0,
+        ..Default::default()
+    });
+    commands.insert_resource(ClearColor(Color::srgb_u8(0, 136, 255)));
+
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_translation(Vec3::new(0.0, 10.0, 0.0)).looking_at(Vec3::ZERO, Vec3::NEG_Z),
+        Projection::from(OrthographicProjection {
+            scale: -0.15,
+            ..OrthographicProjection::default_3d()
+        }),
+    ));
+
+    let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
+    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+    let material = materials.add(Color::srgb_u8(0, 140, 0));
+
+    commands.spawn((
+        Name::new("Ground Plane"),
+        GroundPlane,
+        Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::new(world_width, 1.0, world_height)),
+        Mesh3d(mesh),
+        MeshMaterial3d(material),
+    ));
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_tile_visual(
+    entity: &mut EntityCommands,
+    tile: EditorTile,
+    position: (usize, usize),
+    world_width: f32,
+    world_height: f32,
+    meshes: &mut Assets<Mesh>,
+    wall_graphics: &WallGraphicsAssets,
+    agent_graphics: &AgentGraphicsAssets,
+    goblet_graphics: &GobletGraphicsAssets,
+) {
+    match tile {
+        EditorTile::Empty => {
+            entity.remove::<(Mesh3d, MeshMaterial3d<StandardMaterial>)>();
+        }
+        EditorTile::Wall => {
+            let mesh = meshes.add(Cuboid::new(CELL_SIZE, WALL_HEIGHT, CELL_SIZE));
+            let translation =
+                cell_to_world(position, CELL_SIZE, world_width, world_height, WALL_HEIGHT / 2.0);
+            entity.insert((
+                Mesh3d(mesh),
+                MeshMaterial3d(wall_graphics.material.clone()),
+                Transform::from_translation(translation),
+            ));
+        }
+        EditorTile::Agent => {
+            let mesh = meshes.add(Cuboid::new(CELL_SIZE, CELL_SIZE, CELL_SIZE));
+            let translation = cell_to_world(position, CELL_SIZE, world_width, world_height, 0.0);
+            entity.insert((
+                Mesh3d(mesh),
+                MeshMaterial3d(agent_graphics.material.clone()),
+                Transform::from_translation(translation),
+            ));
+        }
+        EditorTile::Ghost => {
+            let mesh = meshes.add(Cuboid::new(CELL_SIZE, CELL_SIZE, CELL_SIZE));
+            let translation = cell_to_world(
+                position,
+                CELL_SIZE,
+                world_width,
+                world_height,
+                WALL_HEIGHT + 1.0,
+            );
+            entity.insert((
+                Mesh3d(mesh),
+                MeshMaterial3d(agent_graphics.ghost_material.clone()),
+                Transform::from_translation(translation),
+            ));
+        }
+        EditorTile::Goblet(reward) => {
+            let mesh = meshes.add(Cylinder::new(CELL_SIZE / 2.0, 3.0));
+            let translation = cell_to_world(position, CELL_SIZE, world_width, world_height, 0.0);
+            let material = if reward > 0 {
+                goblet_graphics.material.clone()
+            } else {
+                goblet_graphics.false_material.clone()
+            };
+            entity.insert((
+                Mesh3d(mesh),
+                MeshMaterial3d(material),
+                Transform::from_translation(translation),
+            ));
+        }
+    }
+}
+
+pub fn setup_tiles(
+    mut commands: Commands,
+    board: Res<EditorBoard>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    wall_graphics: Res<WallGraphicsAssets>,
+    agent_graphics: Res<AgentGraphicsAssets>,
+    goblet_graphics: Res<GobletGraphicsAssets>,
+) {
+    let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
+
+    for (row, cols) in board.tiles.iter().enumerate() {
+        for (col, &tile) in cols.iter().enumerate() {
+            let mut entity = commands.spawn(EditorTileEntity { row, col });
+            apply_tile_visual(
+                &mut entity,
+                tile,
+                (col, row),
+                world_width,
+                world_height,
+                &mut meshes,
+                &wall_graphics,
+                &agent_graphics,
+                &goblet_graphics,
+            );
+        }
+    }
+}
+
+pub fn sync_tiles(
+    mut commands: Commands,
+    board: Res<EditorBoard>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    wall_graphics: Res<WallGraphicsAssets>,
+    agent_graphics: Res<AgentGraphicsAssets>,
+    goblet_graphics: Res<GobletGraphicsAssets>,
+    q: Query<(Entity, &EditorTileEntity)>,
+) {
+    let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
+
+    for (entity, EditorTileEntity { row, col }) in &q {
+        let tile = board.tiles[*row][*col];
+        let mut entity_commands = commands.entity(entity);
+        apply_tile_visual(
+            &mut entity_commands,
+            tile,
+            (*col, *row),
+            world_width,
+            world_height,
+            &mut meshes,
+            &wall_graphics,
+            &agent_graphics,
+            &goblet_graphics,
+        );
+    }
+}
+
+/// Marker: a UI text label showing a goblet's `|reward|` (color already
+/// conveys sign), tracking the tile's world position on screen. Editor-only
+/// — the live game's `goblet/systems.rs::spawn_goblets` doesn't render this.
+#[derive(Component)]
+pub struct GobletRewardLabel {
+    pub row: usize,
+    pub col: usize,
+}
+
+/// Rebuilds the goblet-reward labels whenever the board changes. A full
+/// despawn/respawn is simplest and correct — boards typically have only a
+/// handful of goblets, so this isn't worth the bookkeeping a diff would need.
+pub fn sync_goblet_labels(
+    mut commands: Commands,
+    board: Res<EditorBoard>,
+    existing: Query<Entity, With<GobletRewardLabel>>,
+) {
+    for entity in &existing {
+        commands.entity(entity).despawn();
+    }
+
+    for (row, cols) in board.tiles.iter().enumerate() {
+        for (col, &tile) in cols.iter().enumerate() {
+            if let EditorTile::Goblet(reward) = tile {
+                commands.spawn((
+                    GobletRewardLabel { row, col },
+                    Text::new(reward.unsigned_abs().to_string()),
+                    TextFont {
+                        font_size: 16.0,
+                        ..Default::default()
+                    },
+                    TextColor(Color::BLACK),
+                    Node {
+                        position_type: PositionType::Absolute,
+                        ..Default::default()
+                    },
+                    Visibility::Visible,
+                ));
+            }
+        }
+    }
+}
+
+/// Projects each goblet label's world position to screen space every frame,
+/// so it tracks correctly as the camera pans/zooms. The camera looks
+/// straight down (no tilt), so the Y height used here doesn't affect the
+/// projected X/Z screen position — it's just for readability of the code.
+pub fn update_goblet_label_positions(
+    board: Res<EditorBoard>,
+    camera_q: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
+    mut labels: Query<(&GobletRewardLabel, &mut Node, &mut Visibility)>,
+) {
+    let Ok((camera, cam_transform)) = camera_q.single() else {
+        return;
+    };
+    let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
+
+    for (label, mut node, mut visibility) in &mut labels {
+        let world_pos = cell_to_world(
+            (label.col, label.row),
+            CELL_SIZE,
+            world_width,
+            world_height,
+            1.6, // just above the goblet mesh (Cylinder height 3.0, centered at y=0)
+        );
+
+        match camera.world_to_viewport(cam_transform, world_pos) {
+            Ok(screen_pos) => {
+                *visibility = Visibility::Visible;
+                // Rough centering for 1-3 digit numbers at font_size 16.
+                node.left = Val::Px(screen_pos.x - 6.0);
+                node.top = Val::Px(screen_pos.y - 8.0);
+            }
+            Err(_) => {
+                *visibility = Visibility::Hidden;
+            }
+        }
+    }
+}
+
+pub fn draw_grid(mut gizmos: Gizmos, board: Res<EditorBoard>, state: Res<EditorState>) {
+    if !state.show_grid {
+        return;
+    }
+
+    let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
+    let half_w = world_width / 2.0;
+    let half_h = world_height / 2.0;
+    let y = 0.05;
+    let color = Color::srgba(1.0, 1.0, 1.0, 0.4);
+
+    for col in 0..=board.width {
+        let x = col as f32 * CELL_SIZE - half_w;
+        gizmos.line(Vec3::new(x, y, -half_h), Vec3::new(x, y, half_h), color);
+    }
+    for row in 0..=board.height {
+        let z = row as f32 * CELL_SIZE - half_h;
+        gizmos.line(Vec3::new(-half_w, y, z), Vec3::new(half_w, y, z), color);
+    }
+}

@@ -1,0 +1,7 @@
+width: 3
+height: 3
+walls: []
+agent_position: [1, 1]
+goblets:
+  - position: [1, 1]
+    reward: 5

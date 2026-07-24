@@ -11,11 +11,36 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-    # ---------- LINUX: build inside manylinux; generate stubs once ----------
-    build-linux:
+    # ---------- Stubs: generated once, fast, upfront (no Bevy feature, no
+    # Docker) so build-linux/windows/macos can all run in parallel off of it
+    # instead of windows/macos waiting on the much slower Linux/Docker build
+    # just for an optional .pyi file. ----------
+    generate-stubs:
         runs-on: ubuntu-latest
-        outputs:
-            stubs_present: ${{ steps.has_stubs.outputs.present }}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dtolnay/rust-toolchain@stable
+            - uses: Swatinem/rust-cache@v2
+              with:
+                  prefix-key: gg-core-stubs
+                  workspaces: |
+                      . -> target
+
+            # --no-default-features skips the optional `bevy`/`pymodule`
+            # features, so this never touches the huge Bevy dependency tree —
+            # stub_gen only needs gg_core + gg_core_py's own pyo3 annotations.
+            - name: Generate stubs
+              run: cargo run -p gg_core_py --bin stub_gen --no-default-features --release
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: stubs
+                  path: gg_core_py/python/gg_core/*.pyi
+
+    # ---------- LINUX: build inside manylinux ----------
+    build-linux:
+        needs: generate-stubs
+        runs-on: ubuntu-latest
         env:
             RUSTC_WRAPPER: sccache
             SCCACHE_GHA_ENABLED: "true"
@@ -24,6 +49,11 @@ jobs:
             - uses: dtolnay/rust-toolchain@stable
             - uses: actions/setup-python@v5
               with: { python-version: "3.11" }
+
+            - uses: actions/download-artifact@v4
+              with:
+                  name: stubs
+                  path: gg_core_py/python/gg_core
 
             # Rust target cache (host). Helps if any host cargo runs occur.
             - uses: Swatinem/rust-cache@v2
@@ -55,7 +85,7 @@ jobs:
                   key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
                   restore-keys: pip-${{ runner.os }}-
 
-            # Venv (to install built wheel & run stub generator)
+            # Venv (to install built wheel)
             - name: Create venv
               run: |
                   python -m venv .venv
@@ -76,47 +106,28 @@ jobs:
                       curl -L https://github.com/mozilla/sccache/releases/download/v0.10.0/sccache-v0.10.0-x86_64-unknown-linux-musl.tar.gz \
                         | tar xz --strip-components=1 -C /usr/local/bin sccache-v0.10.0-x86_64-unknown-linux-musl/sccache
                       sccache --start-server || true
-                      maturin build -m Cargo.toml \
-                        --features pymodule --release --sdist --manylinux 2014 -o dist
+                      maturin build -m gg_core_py/Cargo.toml \
+                        --features pymodule,bevy --release --sdist --manylinux 2014 -o dist
                       sccache --show-stats || true
                     '
 
             - name: Claim ownership of the target directory
               run: sudo chown -R $(id -u):$(id -g) target
 
-            # Install the wheel and generate stubs (no duplicate Rust build)
-            - name: Install wheel and generate stubs
+            - name: Install wheel and import-test
               run: |
                   . .venv/bin/activate
                   pip install dist/*.whl
                   python -c "import gg_core as m; print('import ok:', m.__file__)"
-                  # If stub_gen is a Rust bin, avoid sccache requirement for this one step:
-                  env -u RUSTC_WRAPPER cargo run --bin stub_gen --no-default-features --release
 
             - uses: actions/upload-artifact@v4
               with:
                   name: dist-linux
                   path: dist/*
 
-            - id: has_stubs
-              shell: bash
-              run: |
-                  shopt -s nullglob
-                  files=(python/gg_core/*.pyi)
-                  if ((${#files[@]})); then
-                    echo "present=true"  >> "$GITHUB_OUTPUT"
-                  else
-                    echo "present=false" >> "$GITHUB_OUTPUT"
-                  fi
-
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: stubs
-                  path: python/gg_core/*.pyi
-
     # ---------- WINDOWS ----------
     build-windows:
-        needs: build-linux
+        needs: generate-stubs
         runs-on: windows-latest
         env:
             RUSTC_WRAPPER: sccache
@@ -137,12 +148,16 @@ jobs:
                   workspaces: |
                       . -> target
 
-            # (Optional) Download stubs if you want to package them / sanity-check
             - uses: actions/download-artifact@v4
-              if: ${{ needs.build-linux.outputs.stubs_present == 'true' }}
               with:
                   name: stubs
-                  path: python/gg_core
+                  path: gg_core_py/python/gg_core
+
+            - uses: actions/cache@v4
+              with:
+                  path: ~\AppData\Local\pip\Cache
+                  key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+                  restore-keys: pip-${{ runner.os }}-
 
             # Build wheels on Windows host
             - name: Build wheels (Windows)
@@ -150,8 +165,8 @@ jobs:
               with:
                   command: build
                   args: >-
-                      -m Cargo.toml
-                      --features pymodule
+                      -m gg_core_py/Cargo.toml
+                      --features pymodule,bevy
                       --release
                       --sdist
                       -o dist
@@ -177,7 +192,7 @@ jobs:
 
     # ---------- macOS ----------
     build-macos:
-        needs: build-linux
+        needs: generate-stubs
         runs-on: macos-14
         env:
             RUSTC_WRAPPER: sccache
@@ -197,18 +212,22 @@ jobs:
                   workspaces: |
                       . -> target
 
-            # (Optional) Download stubs if you want to package them / sanity-check
             - uses: actions/download-artifact@v4
-              if: ${{ needs.build-linux.outputs.stubs_present == 'true' }}
               with:
                   name: stubs
-                  path: python/gg_core
+                  path: gg_core_py/python/gg_core
+
+            - uses: actions/cache@v4
+              with:
+                  path: ~/Library/Caches/pip
+                  key: pip-${{ runner.os }}-${{ hashFiles('**/requirements*.txt') }}
+                  restore-keys: pip-${{ runner.os }}-
 
             - name: Build wheels (macOS universal2)
               uses: PyO3/maturin-action@v1
               with:
                   command: build
-                  args: -m Cargo.toml --features pymodule --release --sdist --target universal2-apple-darwin -o dist
+                  args: -m gg_core_py/Cargo.toml --features pymodule,bevy --release --sdist --target universal2-apple-darwin -o dist
 
             # Quick import test (optional)
             - name: Import test

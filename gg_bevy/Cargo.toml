@@ -1,0 +1,56 @@
+[package]
+name = "gg_bevy"
+version = "0.2.0"
+edition = "2024"
+
+[lib]
+name = "gg_bevy"
+
+[dependencies]
+gg_core = { path = "../gg_core" }
+bevy = { version = "0.17.2", default-features = false, features = [
+    # Engine / core
+    "async_executor",
+    "std",
+    "multi_threaded",
+    "reflect_auto_register",
+    "sysinfo_plugin",
+    "debug",
+
+    # Core subsystems
+    "bevy_asset",
+    "bevy_camera",
+    "bevy_color",
+    "bevy_core_pipeline",
+    "bevy_gizmos",
+    "bevy_gltf",
+    "bevy_image",
+    "bevy_input_focus",
+    "bevy_light",
+    "bevy_log",
+    "bevy_mesh",
+    "bevy_mesh_picking_backend",
+    "bevy_pbr",
+    "bevy_picking",
+    "bevy_render",
+    "bevy_scene",
+    "bevy_state",
+    "bevy_text",
+    "bevy_ui",
+    "bevy_ui_picking_backend",
+    "bevy_ui_render",
+    "bevy_window",
+    "bevy_winit",
+
+    # Graphics options
+    "tonemapping_luts",
+    "zstd_rust",
+
+    # Platform specific
+    "x11",
+
+    # Built-in data / assets
+    "default_font",
+] }
+bevy-inspector-egui = "0.34"
+derivative = "2.2.0"

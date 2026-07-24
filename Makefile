@@ -1,9 +1,9 @@
 PY              ?= python3
 MATURIN         ?= maturin
 CARGO           ?= cargo
-PY_CRATE        ?= Cargo.toml
+PY_CRATE        ?= gg_core_py/Cargo.toml
 BIN             ?= stub_gen
-FEAT_PYMODULE   ?= pymodule
+FEAT_PYMODULE   ?= pymodule,bevy
 PROFILE         ?= release
 CARGO_FLAGS     ?= --no-default-features
 CARGO_TARGET    ?=
@@ -26,7 +26,7 @@ develop:
 
 stubs: develop
 	@echo ">> Running stub generator bin: $(BIN)"
-	$(CARGO) run $(CARGO_TARGET) --bin $(BIN) $(CARGO_FLAGS)
+	$(CARGO) run -p gg_core_py $(CARGO_TARGET) --bin $(BIN) $(CARGO_FLAGS)
 
 wheel:
 	@echo ">> Building wheels via maturin"

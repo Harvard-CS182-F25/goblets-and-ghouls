@@ -1,0 +1,18 @@
+[package]
+name = "gg_core"
+version = "0.2.0"
+edition = "2024"
+
+[lib]
+name = "gg_core"
+
+[dependencies]
+pyo3 = { version = "0.27", features = ["serde"] }
+pyo3-stub-gen = "0.14.0"
+serde = "1.0.228"
+serde_yaml = "0.9.34"
+serde_json = "1.0.145"
+derivative = "2.2.0"
+rand = "0.9.2"
+wyrand = "0.3.2"
+thiserror = "2.0.15"
