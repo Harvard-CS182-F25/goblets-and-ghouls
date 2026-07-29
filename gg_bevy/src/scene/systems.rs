@@ -18,6 +18,7 @@ pub fn setup_key_instructions(
     let config = &config.0;
     let is_teleop = config.agent.ghost_policy == Some(gg_core::GhostPolicy::Teleop);
     let has_value_heatmap = heatmap.0.is_some();
+    let ghost_occlusion_enabled = config.agent.ghost_occlusion;
 
     let generation_line = match &config.world_file {
         Some(path) => format!("World: {}", path),
@@ -107,6 +108,11 @@ pub fn setup_key_instructions(
                     font_size: 14.0,
                     ..default()
                 },
+                TextColor(if ghost_occlusion_enabled {
+                    Color::srgb(0.7, 0.7, 0.7)
+                } else {
+                    Color::WHITE
+                }),
                 TextLayout::new_with_justify(Justify::Right),
             ));
 
