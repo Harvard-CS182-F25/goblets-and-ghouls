@@ -26,6 +26,16 @@ pub struct GameState {
     pub config: GGConfig,
 }
 
+impl GameState {
+    fn with_runtime_from(mut self, other: &GameState) -> Self {
+        self.initial_board = other.initial_board.clone();
+        self.rng = other.rng.clone();
+        self.rng_seed = other.rng_seed;
+        self.config = other.config.clone();
+        self
+    }
+}
+
 #[gen_stub_pymethods]
 #[pymethods]
 impl GameState {
@@ -37,7 +47,7 @@ impl GameState {
             for y in 0..height {
                 let mut new_board = self.board.clone();
                 new_board.agent_position = (x, y);
-                let new_state = GameState::from(new_board);
+                let new_state = GameState::from(new_board).with_runtime_from(self);
                 states.push(new_state);
             }
         }
@@ -47,7 +57,7 @@ impl GameState {
                 for y in 0..height {
                     let mut new_board = self.board.clone();
                     new_board.ghost_position = Some((x, y));
-                    let new_state = GameState::from(new_board);
+                    let new_state = GameState::from(new_board).with_runtime_from(self);
                     states.push(new_state);
                 }
             }
@@ -58,7 +68,7 @@ impl GameState {
 
     fn next_state(&self, action: Action) -> GameState {
         let board = self.board.transition_det(action, Agent::Player);
-        GameState::from(board)
+        GameState::from(board).with_runtime_from(self)
     }
 
     /// The ghost's position as currently observed by the agent: `None` if
@@ -146,7 +156,7 @@ impl From<Board> for GameState {
             done,
             active_player: Agent::Player,
             initial_board: Box::new(board),
-            rng: WyRand::from_rng(&mut rand::rng()),
+            rng: WyRand::from_seed(u64::from(seed).to_ne_bytes()),
             rng_seed: seed.into(),
             config: GGConfig::default(),
         }
@@ -171,9 +181,7 @@ impl GameState {
             .board
             .transition(&mut self.rng, action, self.active_player, &self.config);
 
-        GameState::from(board)
-            .with_initial_board(&self.initial_board)
-            .with_config(&self.config)
+        GameState::from(board).with_runtime_from(self)
     }
 
     pub fn transition(&mut self, action: Action) -> Self {
@@ -219,9 +227,7 @@ impl GameState {
 
         let board = state.board.transition_det(ghost_action, Agent::Ghost);
 
-        GameState::from(board)
-            .with_initial_board(&self.initial_board)
-            .with_config(&self.config)
+        GameState::from(board).with_runtime_from(self)
     }
 
     /// Like `step`, but for a `GhostPolicy::Teleop` ghost: `ghost_direction`
@@ -243,9 +249,7 @@ impl GameState {
         match ghost_direction {
             Some(direction) => {
                 let board = state.board.transition_det(direction, Agent::Ghost);
-                GameState::from(board)
-                    .with_initial_board(&self.initial_board)
-                    .with_config(&self.config)
+                GameState::from(board).with_runtime_from(&state)
             }
             None => state,
         }
@@ -253,11 +257,6 @@ impl GameState {
 
     pub fn with_config(mut self, config: &GGConfig) -> Self {
         self.config = config.clone();
-
-        if let Some(seed) = config.episode_seed {
-            self.with_seed(seed as u64);
-        }
-
         self
     }
 }
@@ -332,5 +331,47 @@ mod tests {
     fn transition_panics_if_ghost_policy_is_teleop() {
         let mut state = teleop_state((0, 0), (4, 4));
         state.transition(Action::Right);
+    }
+
+    fn state_signature(state: &GameState) -> ((usize, usize), Option<(usize, usize)>, i32, bool) {
+        (
+            state.board.agent_position,
+            state.board.ghost_position,
+            state.reward,
+            state.done,
+        )
+    }
+
+    #[test]
+    fn seeded_state_remains_deterministic_across_multiple_steps() {
+        let board = Board {
+            agent_position: (2, 2),
+            ghost_position: Some((4, 4)),
+            goblets: Vec::new(),
+            wall_positions: HashSet::new(),
+            width: 6,
+            height: 6,
+        };
+        let config = GGConfig {
+            agent: AgentConfig {
+                ghost_policy: Some(GhostPolicy::Random),
+                transition: [0.4, 0.3, 0.2, 0.1],
+                ..Default::default()
+            },
+            episode_seed: Some(1234),
+            ..Default::default()
+        };
+
+        let initial_state = GameState::from(board).with_config(&config).with_seed(1234);
+        let mut left = initial_state.clone();
+        let mut right = initial_state;
+
+        for action in [Action::Up, Action::Right, Action::Down, Action::Left] {
+            let next_left = left.step(action);
+            let next_right = right.step(action);
+            assert_eq!(state_signature(&next_left), state_signature(&next_right));
+            left = next_left;
+            right = next_right;
+        }
     }
 }
