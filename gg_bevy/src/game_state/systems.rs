@@ -194,7 +194,7 @@ pub fn thicker_gizmos(mut store: ResMut<GizmoConfigStore>) {
     // relative to the shaft (see `with_tip_length` in `visualize_policy`)
     // to keep the arrowhead crisp.
     let (cfg, _group) = store.config_mut::<DefaultGizmoConfigGroup>();
-    cfg.line.width = 3.0; // thicker than the 2.0 default, not so thick it blobs
+    cfg.line.width = 5.0; // thicker than the 2.0 default, not so thick it blobs
 }
 
 pub fn toggle_policy_visualization(mut visualize_policy: ResMut<VisualizePolicy>) {
@@ -257,7 +257,7 @@ pub fn visualize_policy(
             // relative to `line.width` and reads as a clean "V" rather than
             // a blob — see the root-cause note on `thicker_gizmos`.
             gizmos
-                .arrow(arrow_start, arrow_end, Color::BLACK)
+                .arrow(arrow_start, arrow_end, Color::srgb(0.0, 0.35, 0.0))
                 .with_tip_length(arrow_length * 0.3);
         }
     }
