@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::coords::world_dimensions;
-use crate::resources::{ConfigResource, GameStateResource};
+use crate::resources::{ConfigResource, GameStateResource, HeatmapResource};
 use crate::scene::{GroundPlane, RewardText, WALL_HEIGHT, WallBundle, WallGraphicsAssets};
 
 /// Spawns the upper-right HUD panel: generation seed (or the world file
@@ -13,9 +13,11 @@ pub fn setup_key_instructions(
     mut commands: Commands,
     config: Res<ConfigResource>,
     state: Res<GameStateResource>,
+    heatmap: Res<HeatmapResource>,
 ) {
     let config = &config.0;
     let is_teleop = config.agent.ghost_policy == Some(gg_core::GhostPolicy::Teleop);
+    let has_value_heatmap = heatmap.0.is_some();
 
     let generation_line = match &config.world_file {
         Some(path) => format!("World: {}", path),
@@ -92,6 +94,11 @@ pub fn setup_key_instructions(
                     font_size: 14.0,
                     ..default()
                 },
+                TextColor(if has_value_heatmap {
+                    Color::WHITE
+                } else {
+                    Color::srgb(0.7, 0.7, 0.7)
+                }),
                 TextLayout::new_with_justify(Justify::Right),
             ));
             parent.spawn((
