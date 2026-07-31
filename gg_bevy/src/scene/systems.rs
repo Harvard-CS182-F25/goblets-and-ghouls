@@ -74,7 +74,7 @@ pub fn setup_key_instructions(
                 RewardText,
             ));
             parent.spawn((
-                Text::new("+/-: Zoom In/Out | Shift+Click Drag: Pan Camera"),
+                Text::new("+/-: Zoom In/Out | Shift+Drag: Pan Camera"),
                 TextFont {
                     font_size: 14.0,
                     ..default()

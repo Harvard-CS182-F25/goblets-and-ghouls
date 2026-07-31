@@ -524,7 +524,7 @@ pub fn show_game_over_overlay(
     } else if game_state.0.reward > 0 {
         ("Escaped", Color::srgb(0.15, 0.75, 0.15))
     } else {
-        ("Escaped?", Color::srgb(0.85, 0.15, 0.15))
+        ("Escaped...?", Color::srgb(0.75, 0.70, 0.50))
     };
 
     let text = commands
