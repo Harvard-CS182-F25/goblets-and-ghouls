@@ -102,6 +102,37 @@ pub fn setup_key_instructions(
                 }),
                 TextLayout::new_with_justify(Justify::Right),
             ));
+            if has_value_heatmap {
+                parent
+                    .spawn(Node {
+                        display: Display::Flex,
+                        justify_content: JustifyContent::FlexEnd,
+                        align_items: AlignItems::Center,
+                        column_gap: Val::Px(6.0),
+                        ..default()
+                    })
+                    .with_children(|legend| {
+                        let label_font = TextFont {
+                            font_size: 11.0,
+                            ..default()
+                        };
+                        legend.spawn((
+                            Text::new("negative"),
+                            label_font.clone(),
+                            TextColor(Color::srgb(0.267, 0.005, 0.329)),
+                        ));
+                        legend.spawn((
+                            Text::new("zero"),
+                            label_font.clone(),
+                            TextColor(Color::srgb(0.129, 0.567, 0.551)),
+                        ));
+                        legend.spawn((
+                            Text::new("positive"),
+                            label_font,
+                            TextColor(Color::srgb(0.993, 0.906, 0.144)),
+                        ));
+                    });
+            }
             parent.spawn((
                 Text::new("F: Toggle Agent Visibility Overlay"),
                 TextFont {
