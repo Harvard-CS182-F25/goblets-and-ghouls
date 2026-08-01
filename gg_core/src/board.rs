@@ -19,6 +19,10 @@ use crate::goblet::Goblet;
 /// Stores the dimensions and board layout.
 pub struct Board {
     #[pyo3(get)]
+    pub width: usize,
+    #[pyo3(get)]
+    pub height: usize,
+    #[pyo3(get)]
     pub agent_position: (usize, usize),
     /// Returns the true position of the ghost, regardless of visibility.
     /// If there is no ghost, returns None.
@@ -28,10 +32,6 @@ pub struct Board {
     pub goblets: Vec<Goblet>,
     #[pyo3(get)]
     pub wall_positions: HashSet<(usize, usize)>,
-    #[pyo3(get)]
-    pub width: usize,
-    #[pyo3(get)]
-    pub height: usize,
 }
 
 fn get_circle_indices(
@@ -129,12 +129,12 @@ impl Board {
             .collect::<Vec<_>>();
 
         Self {
+            width,
+            height,
             agent_position,
             ghost_position,
             goblets,
             wall_positions,
-            width,
-            height,
         }
     }
 

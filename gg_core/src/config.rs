@@ -34,15 +34,15 @@ pub struct AgentConfig {
     #[pyo3(get)]
     pub ghost_policy: Option<GhostPolicy>,
 
-    /// Returns the probabilities that the agent's actual action are
-    /// [intended, right, back, left]. Entries must be nonnegative and sum to 1.
-    #[pyo3(get)]
-    pub transition: [f32; 4],
-
     /// When true, a ghost hidden behind a wall (no line of sight from the
     /// agent) is not observed by the agent, for policy look-up purposes.
     #[pyo3(get)]
     pub ghost_occlusion: bool,
+
+    /// Returns the probabilities that the agent's actual action are
+    /// [intended, right, back, left]. Entries must be nonnegative and sum to 1.
+    #[pyo3(get)]
+    pub transition: [f32; 4],
 }
 
 #[pymethods]
@@ -184,11 +184,11 @@ pub struct GGConfig {
     #[pyo3(get, set)]
     pub agent: AgentConfig,
     #[pyo3(get, set)]
-    pub camera: CameraConfig,
-    #[pyo3(get, set)]
     pub goblets: GobletConfig,
     #[pyo3(get, set)]
     pub world_generation: WorldGenerationConfig,
+    #[pyo3(get, set)]
+    pub camera: CameraConfig,
     #[pyo3(get, set)]
     #[derivative(Default(value = "1.0"))]
     pub render_delay_secs: f32,
@@ -241,15 +241,6 @@ impl GGConfig {
         self.agent.ghost_policy = value;
     }
 
-    #[getter(transition)]
-    fn get_transition(&self) -> [f32; 4] {
-        self.agent.transition
-    }
-    #[setter(transition)]
-    fn set_transition(&mut self, value: [f32; 4]) {
-        self.agent.transition = value;
-    }
-
     #[getter(ghost_occlusion)]
     fn get_ghost_occlusion(&self) -> bool {
         self.agent.ghost_occlusion
@@ -257,6 +248,15 @@ impl GGConfig {
     #[setter(ghost_occlusion)]
     fn set_ghost_occlusion(&mut self, value: bool) {
         self.agent.ghost_occlusion = value;
+    }
+
+    #[getter(transition)]
+    fn get_transition(&self) -> [f32; 4] {
+        self.agent.transition
+    }
+    #[setter(transition)]
+    fn set_transition(&mut self, value: [f32; 4]) {
+        self.agent.transition = value;
     }
 
     #[getter(scale)]
