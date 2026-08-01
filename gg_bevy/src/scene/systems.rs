@@ -73,14 +73,58 @@ pub fn setup_key_instructions(
                 TextLayout::new_with_justify(Justify::Right),
                 RewardText,
             ));
+            parent.spawn(Node {
+                height: Val::Px(14.0),
+                ..default()
+            });
             parent.spawn((
-                Text::new("+/-: Zoom In/Out | Shift+Drag: Pan Camera"),
+                Text::new("+/-: Zoom In/Out"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
                 },
                 TextLayout::new_with_justify(Justify::Right),
             ));
+            parent.spawn((
+                Text::new("Shift+Drag: Pan Camera"),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextLayout::new_with_justify(Justify::Right),
+            ));
+
+            if is_teleop {
+                parent.spawn((
+                    Text::new("Arrows/WASD: Move Ghost"),
+                    TextFont {
+                        font_size: 14.0,
+                        ..default()
+                    },
+                    TextLayout::new_with_justify(Justify::Right),
+                ));
+                parent.spawn((
+                    Text::new("Space: Ghost Stays"),
+                    TextFont {
+                        font_size: 14.0,
+                        ..default()
+                    },
+                    TextLayout::new_with_justify(Justify::Right),
+                ));
+            } else {
+                parent.spawn((
+                    Text::new("Space: Pause/Play"),
+                    TextFont {
+                        font_size: 14.0,
+                        ..default()
+                    },
+                    TextLayout::new_with_justify(Justify::Right),
+                ));
+            }
+            parent.spawn(Node {
+                height: Val::Px(14.0),
+                ..default()
+            });
             parent.spawn((
                 Text::new("P: Toggle Policy Visualization"),
                 TextFont {
@@ -102,37 +146,35 @@ pub fn setup_key_instructions(
                 }),
                 TextLayout::new_with_justify(Justify::Right),
             ));
-            if has_value_heatmap {
-                parent
-                    .spawn(Node {
-                        display: Display::Flex,
-                        justify_content: JustifyContent::FlexEnd,
-                        align_items: AlignItems::Center,
-                        column_gap: Val::Px(6.0),
+            parent
+                .spawn(Node {
+                    display: Display::Flex,
+                    justify_content: JustifyContent::FlexEnd,
+                    align_items: AlignItems::Center,
+                    column_gap: Val::Px(6.0),
+                    ..default()
+                })
+                .with_children(|legend| {
+                    let label_font = TextFont {
+                        font_size: 11.0,
                         ..default()
-                    })
-                    .with_children(|legend| {
-                        let label_font = TextFont {
-                            font_size: 11.0,
-                            ..default()
-                        };
-                        legend.spawn((
-                            Text::new("negative"),
-                            label_font.clone(),
-                            TextColor(Color::srgb(0.267, 0.005, 0.329)),
-                        ));
-                        legend.spawn((
-                            Text::new("zero"),
-                            label_font.clone(),
-                            TextColor(Color::srgb(0.129, 0.567, 0.551)),
-                        ));
-                        legend.spawn((
-                            Text::new("positive"),
-                            label_font,
-                            TextColor(Color::srgb(0.993, 0.906, 0.144)),
-                        ));
-                    });
-            }
+                    };
+                    legend.spawn((
+                        Text::new("negative"),
+                        label_font.clone(),
+                        TextColor(Color::srgb(0.267, 0.005, 0.329)),
+                    ));
+                    legend.spawn((
+                        Text::new("zero"),
+                        label_font.clone(),
+                        TextColor(Color::srgb(0.129, 0.567, 0.551)),
+                    ));
+                    legend.spawn((
+                        Text::new("positive"),
+                        label_font,
+                        TextColor(Color::srgb(0.993, 0.906, 0.144)),
+                    ));
+                });
             parent.spawn((
                 Text::new("O: Toggle Visibility Overlay"),
                 TextFont {
@@ -165,28 +207,6 @@ pub fn setup_key_instructions(
                         }),
                     ));
                 });
-
-            if is_teleop {
-                parent.spawn((
-                    Text::new(
-                        "Arrows/WASD: Move Ghost | Space: Ghost Stays (advances one step)",
-                    ),
-                    TextFont {
-                        font_size: 14.0,
-                        ..default()
-                    },
-                    TextLayout::new_with_justify(Justify::Right),
-                ));
-            } else {
-                parent.spawn((
-                    Text::new("Space: Pause/Play"),
-                    TextFont {
-                        font_size: 14.0,
-                        ..default()
-                    },
-                    TextLayout::new_with_justify(Justify::Right),
-                ));
-            }
         });
 }
 
