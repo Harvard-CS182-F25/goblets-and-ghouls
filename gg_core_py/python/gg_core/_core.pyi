@@ -256,6 +256,19 @@ class GameState:
         no ghost, or if the ghost isn't currently visible (i.e., inside a wall
         or behind a wall) when `ghost_occlusion` is enabled, returns None.
         """
+    @property
+    def visible_goblet_positions(self) -> builtins.list[tuple[builtins.int, builtins.int]]:
+        r"""
+        Returns the positions of goblets visible from the agent's current
+        position. Goblets hidden behind walls are omitted.
+        """
+    @property
+    def visible_walls(self) -> builtins.list[tuple[builtins.int, builtins.int]]:
+        r"""
+        Returns the positions of walls visible from the agent's current
+        position. A wall is visible if no other wall lies between the agent
+        and that wall.
+        """
     def all_states(self) -> builtins.list[GameState]:
         r"""
         Returns a list of `width * height` game states. These are states where

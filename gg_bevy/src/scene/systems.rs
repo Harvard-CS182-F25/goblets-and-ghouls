@@ -134,18 +134,37 @@ pub fn setup_key_instructions(
                     });
             }
             parent.spawn((
-                Text::new("O: Toggle Ghost Visibility Overlay"),
+                Text::new("O: Toggle Visibility Overlay"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
                 },
-                TextColor(if ghost_occlusion_enabled {
-                    Color::WHITE
-                } else {
-                    Color::srgb(0.7, 0.7, 0.7)
-                }),
                 TextLayout::new_with_justify(Justify::Right),
             ));
+            parent
+                .spawn(Node {
+                    display: Display::Flex,
+                    justify_content: JustifyContent::FlexEnd,
+                    align_items: AlignItems::Center,
+                    column_gap: Val::Px(6.0),
+                    ..default()
+                })
+                .with_children(|status| {
+                    let label_font = TextFont {
+                        font_size: 11.0,
+                        ..default()
+                    };
+                    status.spawn((Text::new("ghost occlusion"), label_font.clone()));
+                    status.spawn((
+                        Text::new(if ghost_occlusion_enabled { "on" } else { "off" }),
+                        label_font,
+                        TextColor(if ghost_occlusion_enabled {
+                            Color::srgb(0.4, 0.8, 0.4)
+                        } else {
+                            Color::srgb(0.8, 0.4, 0.4)
+                        }),
+                    ));
+                });
 
             if is_teleop {
                 parent.spawn((

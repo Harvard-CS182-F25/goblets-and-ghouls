@@ -165,14 +165,10 @@ pub fn update_hover_box(
         0
     };
 
-    let visible = if config.0.agent.ghost_occlusion {
-        game_state
-            .0
-            .board
-            .has_line_of_sight(game_state.0.board.agent_position, agent_position)
-    } else {
-        true
-    };
+    let visible = game_state
+        .0
+        .board
+        .has_line_of_sight(game_state.0.board.agent_position, agent_position);
 
     text.0 = format!(
         "Cell:         ({},{})\n\

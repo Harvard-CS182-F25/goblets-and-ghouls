@@ -94,6 +94,37 @@ impl GameState {
         )
     }
 
+    /// Returns the positions of goblets visible from the agent's current
+    /// position. Goblets hidden behind walls are omitted.
+    #[getter]
+    fn visible_goblet_positions(&self) -> Vec<(usize, usize)> {
+        self.board
+            .goblets
+            .iter()
+            .filter(|goblet| {
+                self.board
+                    .has_line_of_sight(self.board.agent_position, goblet.position)
+            })
+            .map(|goblet| goblet.position)
+            .collect()
+    }
+
+    /// Returns the positions of walls visible from the agent's current
+    /// position. A wall is visible if no other wall lies between the agent
+    /// and that wall.
+    #[getter]
+    fn visible_walls(&self) -> Vec<(usize, usize)> {
+        let mut visible_walls = self
+            .board
+            .wall_positions
+            .iter()
+            .copied()
+            .filter(|&wall| self.board.has_line_of_sight(self.board.agent_position, wall))
+            .collect::<Vec<_>>();
+        visible_walls.sort_unstable();
+        visible_walls
+    }
+
     /// Returns a list of `width * height` game states. These are states where
     /// the agent's position is varied across all positions. If there is a ghost,
     /// each of these states has the ghost's position fixed at its current one,
