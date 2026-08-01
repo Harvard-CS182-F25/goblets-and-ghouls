@@ -186,13 +186,13 @@ impl WorldGenerationConfig {
 #[serde(default)]
 /// Represents the entire configuration of the game.
 pub struct GGConfig {
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub agent: AgentConfig,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub goblets: GobletConfig,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub world_generation: WorldGenerationConfig,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub camera: CameraConfig,
     #[pyo3(get, set)]
     #[derivative(Default(value = "1.0"))]
@@ -223,8 +223,8 @@ pub struct GGConfig {
 // breaking `gg_core`'s use as a standalone engine), the nested leaf fields
 // people actually script against are flattened directly onto `GGConfig` —
 // e.g. `config.ghost_occlusion = False` is a real one-line mutation.
-// `config.agent.ghost_occlusion = False` remains silently ineffective; use
-// the flattened form (or reassign the whole `agent` object) instead.
+// The nested config objects are exposed read-only; mutate via the flattened
+// form instead.
 #[gen_stub_pymethods]
 #[pymethods]
 impl GGConfig {

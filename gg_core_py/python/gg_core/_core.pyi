@@ -105,20 +105,12 @@ class GGConfig:
     """
     @property
     def agent(self) -> AgentConfig: ...
-    @agent.setter
-    def agent(self, value: AgentConfig) -> None: ...
     @property
     def goblets(self) -> GobletConfig: ...
-    @goblets.setter
-    def goblets(self, value: GobletConfig) -> None: ...
     @property
     def world_generation(self) -> WorldGenerationConfig: ...
-    @world_generation.setter
-    def world_generation(self, value: WorldGenerationConfig) -> None: ...
     @property
     def camera(self) -> CameraConfig: ...
-    @camera.setter
-    def camera(self, value: CameraConfig) -> None: ...
     @property
     def render_delay_secs(self) -> builtins.float: ...
     @render_delay_secs.setter
@@ -263,7 +255,7 @@ class GameState:
         position. Goblets hidden behind walls are omitted.
         """
     @property
-    def visible_walls(self) -> builtins.list[tuple[builtins.int, builtins.int]]:
+    def visible_wall_positions(self) -> builtins.list[tuple[builtins.int, builtins.int]]:
         r"""
         Returns the positions of walls visible from the agent's current
         position. A wall is visible if no other wall lies between the agent

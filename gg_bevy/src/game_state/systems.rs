@@ -3,7 +3,7 @@ use gg_core::{Action, EntityType, Goblet};
 
 use crate::coords::{cell_to_world, raycast_to_grid_cell, world_dimensions};
 use crate::resources::{ConfigResource, GameStateResource, HeatmapResource, PolicyResource};
-use crate::scene::GroundPlane;
+use crate::scene::{GroundPlane, WALL_HEIGHT};
 
 use super::components::{
     GameOverOverlay, HeatmapColorRange, HeatmapTile, HoverBox, HoverBoxText, HoverCell,
@@ -424,11 +424,11 @@ pub fn toggle_visibility_overlay(mut visualize_visibility: ResMut<VisualizeVisib
     visualize_visibility.0 = !visualize_visibility.0;
 }
 
-/// Spawns one flat, per-cell tile entity for every non-wall cell — the same
-/// footprint as the heatmap tiles, but layered just above them (y=0.6, still
-/// safely below the y=5.0 arrow overlay) since this overlay darkens
-/// whatever's beneath it. Hidden by default; `update_visibility_overlay`
-/// toggles and darkens tiles the agent currently can't see.
+/// Spawns one flat, per-cell tile entity for every cell. Floor cells sit
+/// just above the ground plane; wall cells sit just above the wall tops so
+/// the visibility overlay covers the whole board consistently. Hidden by
+/// default; `update_visibility_overlay` toggles and darkens tiles the agent
+/// currently can't see.
 pub fn spawn_visibility_tiles(
     mut commands: Commands,
     meshes: Option<ResMut<Assets<Mesh>>>,
@@ -448,12 +448,12 @@ pub fn spawn_visibility_tiles(
 
     for col in 0..board.width {
         for row in 0..board.height {
-            if board.wall_positions.contains(&(col, row)) {
-                continue;
-            }
-
             let mut position = cell_to_world((col, row), cell_size, world_width, world_height, 0.0);
-            position.y = 0.6;
+            position.y = if board.wall_positions.contains(&(col, row)) {
+                WALL_HEIGHT + 0.1
+            } else {
+                0.6
+            };
 
             let material = materials.add(StandardMaterial {
                 base_color: Color::srgba(0.0, 0.0, 0.0, 0.55),
@@ -503,9 +503,7 @@ pub fn update_visibility_overlay(
 /// Full-screen semi-transparent banner announcing why the episode ended —
 /// mirrors `segmentation`'s `show_winner_overlay` (same layout: centered
 /// 72px text over a 65%-black full-screen `Node`). Spawned once `done`
-/// becomes true; torn down again if the episode ever resets (nothing in
-/// `gg_bevy` currently triggers a reset, but this keeps the system correct
-/// if one is added later).
+/// becomes true; torn down again if the episode resets.
 pub fn show_game_over_overlay(
     mut commands: Commands,
     game_state: Res<GameStateResource>,

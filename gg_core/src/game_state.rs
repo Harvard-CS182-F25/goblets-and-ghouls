@@ -113,16 +113,16 @@ impl GameState {
     /// position. A wall is visible if no other wall lies between the agent
     /// and that wall.
     #[getter]
-    fn visible_walls(&self) -> Vec<(usize, usize)> {
-        let mut visible_walls = self
+    fn visible_wall_positions(&self) -> Vec<(usize, usize)> {
+        let mut visible_wall_positions = self
             .board
             .wall_positions
             .iter()
             .copied()
             .filter(|&wall| self.board.has_line_of_sight(self.board.agent_position, wall))
             .collect::<Vec<_>>();
-        visible_walls.sort_unstable();
-        visible_walls
+        visible_wall_positions.sort_unstable();
+        visible_wall_positions
     }
 
     /// Returns a list of `width * height` game states. These are states where

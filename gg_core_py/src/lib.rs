@@ -145,8 +145,8 @@ fn numpy_to_policy(py: Python<'_>, policy_any: &Py<PyAny>) -> PyResult<gg_core::
     let width = array.shape()[0];
     let height = array.shape()[1];
     let mut agent_actions: Vec<Action> = Vec::with_capacity(width * height);
-    for ax in 0..width {
-        for ay in 0..height {
+    for ay in 0..height {
+        for ax in 0..width {
             let item = array.get([ax, ay]).unwrap();
             let action: Action = item.extract(py)?;
             agent_actions.push(action);
@@ -195,8 +195,8 @@ fn numpy_to_value_grid(py: Python<'_>, value_any: &Py<PyAny>) -> PyResult<gg_cor
     let width = array.shape()[0];
     let height = array.shape()[1];
     let mut agent_values: Vec<f32> = Vec::with_capacity(width * height);
-    for ax in 0..width {
-        for ay in 0..height {
+    for ay in 0..height {
+        for ax in 0..width {
             agent_values.push(array[[ax, ay]]);
         }
     }
