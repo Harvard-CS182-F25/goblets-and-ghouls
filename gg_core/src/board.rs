@@ -117,14 +117,14 @@ impl Board {
             .filter(|&pos| Some(pos) != ghost_position)
             .collect::<Vec<_>>();
 
-        let goblets = free_positions
-            .choose_multiple(rng, config.goblets.number)
-            .into_iter()
-            .map(|position| Goblet {
-                position: *position,
-                reward: rng.random_range(
-                    -(config.goblets.max_reward as i32)..=(config.goblets.max_reward as i32),
-                ),
+        let goblets = (0..config.goblets.number)
+            .filter_map(|_| {
+                free_positions.choose(rng).cloned().map(|position| Goblet {
+                    position,
+                    reward: rng.random_range(
+                        -(config.goblets.max_reward as i32)..=(config.goblets.max_reward as i32),
+                    ),
+                })
             })
             .collect::<Vec<_>>();
 
