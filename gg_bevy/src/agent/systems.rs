@@ -3,7 +3,8 @@ use gg_core::Action;
 
 use crate::coords::{cell_to_world, world_dimensions};
 use crate::resources::{
-    ConfigResource, GameStateResource, PolicyResource, PolicyTimer, SimulationPaused,
+    ConfigResource, GameStateResource, PolicyResource, PolicyTimer, RestartedThisFrame,
+    SimulationPaused,
 };
 use crate::scene::WALL_HEIGHT;
 
@@ -72,6 +73,61 @@ pub fn spawn_agents(
     }
 }
 
+pub fn clear_restart_flag(mut restarted: ResMut<RestartedThisFrame>) {
+    restarted.0 = false;
+}
+
+fn sync_actor_transforms(
+    query: &mut Query<(&mut Transform, Option<&Agent>, Option<&GhostAgent>)>,
+    state: &gg_core::GameState,
+) {
+    let cell = state.config.world_generation.cell_size;
+    let (world_width, world_height) = world_dimensions(state.board.width, state.board.height, cell);
+
+    for (mut transform, is_agent, is_ghost) in query.iter_mut() {
+        let (position, y) = if is_agent.is_some() {
+            (state.board.agent_position, 0.0)
+        } else if is_ghost.is_some() {
+            (
+                state
+                    .board
+                    .ghost_position
+                    .expect("Ghost position should exist"),
+                WALL_HEIGHT + 1.0,
+            )
+        } else {
+            continue;
+        };
+
+        transform.translation = cell_to_world(position, cell, world_width, world_height, y);
+    }
+}
+
+pub fn restart_when_done(
+    mut query: Query<(&mut Transform, Option<&Agent>, Option<&GhostAgent>)>,
+    mut game_state: ResMut<GameStateResource>,
+    mut config: ResMut<ConfigResource>,
+    mut timer: ResMut<PolicyTimer>,
+    mut paused: ResMut<SimulationPaused>,
+    mut restarted: ResMut<RestartedThisFrame>,
+) {
+    if !game_state.0.done {
+        return;
+    }
+
+    let (mut state, episode_seed) = game_state.0.reset();
+    let episode_seed = episode_seed as u32;
+    state.config.episode_seed = Some(episode_seed);
+    config.0.episode_seed = Some(episode_seed);
+    game_state.0 = state;
+
+    sync_actor_transforms(&mut query, &game_state.0);
+
+    timer.0.reset();
+    paused.0 = false;
+    restarted.0 = true;
+}
+
 pub fn evaluate_policy(
     mut message_writer: MessageWriter<PlayerActionMessage>,
     mut timer: ResMut<PolicyTimer>,
@@ -80,10 +136,11 @@ pub fn evaluate_policy(
     policy: Res<PolicyResource>,
     config: Res<ConfigResource>,
     paused: Res<SimulationPaused>,
+    restarted: Res<RestartedThisFrame>,
 ) {
     // Don't tick the timer at all while paused, so resuming continues from
     // wherever it left off rather than firing immediately.
-    if paused.0 {
+    if paused.0 || restarted.0 {
         return;
     }
 
@@ -106,7 +163,14 @@ pub fn evaluate_policy(
 /// isn't active (see `agent::mod::ghost_is_teleop`) — Space already means
 /// "ghost stays in place" there, and pause/play doesn't apply to a
 /// simulation that only ever advances on a keypress anyway.
-pub fn toggle_pause(mut paused: ResMut<SimulationPaused>) {
+pub fn toggle_pause(
+    mut paused: ResMut<SimulationPaused>,
+    game_state: Res<GameStateResource>,
+    restarted: Res<RestartedThisFrame>,
+) {
+    if game_state.0.done || restarted.0 {
+        return;
+    }
     paused.0 = !paused.0;
 }
 
@@ -182,7 +246,12 @@ pub fn evaluate_policy_teleop(
     game_state: Res<GameStateResource>,
     policy: Res<PolicyResource>,
     config: Res<ConfigResource>,
+    restarted: Res<RestartedThisFrame>,
 ) {
+    if game_state.0.done || restarted.0 {
+        return;
+    }
+
     let ghost_input = if keyboard_input.just_pressed(KeyCode::ArrowUp)
         || keyboard_input.just_pressed(KeyCode::KeyW)
     {
@@ -231,28 +300,7 @@ pub fn step(
             GhostInput::TeleopMove(direction) => game_state.0.step_teleop(action, Some(direction)),
             GhostInput::TeleopStay => game_state.0.step_teleop(action, None),
         };
-        let cell = game_state.0.config.world_generation.cell_size;
-        let (world_width, world_height) =
-            world_dimensions(state.board.width, state.board.height, cell);
-
-        for (mut transform, is_agent, is_ghost) in query.iter_mut() {
-            let (position, y) = if is_agent.is_some() {
-                (state.board.agent_position, 0.0)
-            } else if is_ghost.is_some() {
-                (
-                    state
-                        .board
-                        .ghost_position
-                        .expect("Ghost position should exist"),
-                    WALL_HEIGHT + 1.0,
-                )
-            } else {
-                continue;
-            };
-
-            transform.translation = cell_to_world(position, cell, world_width, world_height, y);
-        }
-
         game_state.0 = state;
+        sync_actor_transforms(&mut query, &game_state.0);
     }
 }

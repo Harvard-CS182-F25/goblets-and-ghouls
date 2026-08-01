@@ -27,3 +27,8 @@ pub struct PolicyTimer(pub Timer);
 /// ("ghost stays in place") instead.
 #[derive(Resource, Default)]
 pub struct SimulationPaused(pub bool);
+
+/// One-frame latch set when Space restarts a finished episode so other
+/// Space-driven systems (teleop stay / pause toggle) ignore that same keypress.
+#[derive(Resource, Default)]
+pub struct RestartedThisFrame(pub bool);

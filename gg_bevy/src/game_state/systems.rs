@@ -527,7 +527,7 @@ pub fn show_game_over_overlay(
         ("Escaped...?", Color::srgb(0.75, 0.70, 0.50))
     };
 
-    let text = commands
+    let ending_message = commands
         .spawn((
             Text::new(message),
             TextFont {
@@ -538,12 +538,25 @@ pub fn show_game_over_overlay(
         ))
         .id();
 
+    let restart_hint = commands
+        .spawn((
+            Text::new("Space: Restart episode"),
+            TextFont {
+                font_size: 24.0,
+                ..default()
+            },
+            TextColor(Color::WHITE),
+        ))
+        .id();
+
     commands
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(16.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
@@ -552,5 +565,5 @@ pub fn show_game_over_overlay(
             GlobalZIndex(10),
             GameOverOverlay,
         ))
-        .add_children(&[text]);
+        .add_children(&[ending_message, restart_hint]);
 }

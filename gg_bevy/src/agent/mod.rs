@@ -10,7 +10,7 @@ pub use components::*;
 pub use visual::*;
 
 use crate::core::StartupSets;
-use crate::resources::{ConfigResource, SimulationPaused};
+use crate::resources::{ConfigResource, RestartedThisFrame, SimulationPaused};
 
 fn ghost_is_teleop(config: Res<ConfigResource>) -> bool {
     config.0.agent.ghost_policy == Some(GhostPolicy::Teleop)
@@ -21,6 +21,8 @@ impl Plugin for AgentPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<components::PlayerActionMessage>();
         app.insert_resource(SimulationPaused::default());
+        app.insert_resource(RestartedThisFrame::default());
+        app.add_systems(First, systems::clear_restart_flag);
         app.add_systems(PreStartup, spawn_agent_assets);
         app.add_systems(
             Startup,
@@ -32,6 +34,7 @@ impl Plugin for AgentPlugin {
         app.add_systems(
             Update,
             (
+                systems::restart_when_done.run_if(input_just_pressed(KeyCode::Space)),
                 // render_delay_secs / the policy timer only drives stepping
                 // when the ghost isn't teleop-controlled; in Teleop mode the
                 // human's keypress is what advances the simulation instead.
