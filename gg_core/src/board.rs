@@ -14,9 +14,14 @@ use crate::goblet::Goblet;
 #[gen_stub_pyclass]
 #[pyclass(name = "Board")]
 #[derive(Debug, Clone)]
+
+/// Represents the state of the board.
+/// Stores the dimensions and board layout.
 pub struct Board {
     #[pyo3(get)]
     pub agent_position: (usize, usize),
+    /// Returns the true position of the ghost, regardless of visibility.
+    /// If there is no ghost, returns None.
     #[pyo3(get)]
     pub ghost_position: Option<(usize, usize)>,
     #[pyo3(get)]

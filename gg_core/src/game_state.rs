@@ -11,11 +11,19 @@ use crate::config::{GGConfig, GhostPolicy};
 #[gen_stub_pyclass]
 #[pyclass(name = "GameState")]
 #[derive(Debug, Clone)]
+
+/// Represents the game state and holds the bulk of the game logic.
 pub struct GameState {
+    /// Returns the state of the board.
     #[pyo3(get)]
     pub board: Board,
+    /// Represents the immediate reward of the current state. Equals the
+    /// minimum integer if the agent has been caught by the ghost, the value
+    /// of a goblet if the agent has found a goblet, and zero otherwise.
     #[pyo3(get)]
     pub reward: i32,
+    /// Returns True if the agent has collected a goblet or has been caught
+    /// by the ghost.
     #[pyo3(get)]
     pub done: bool,
     pub active_player: Agent,
@@ -39,15 +47,15 @@ impl GameState {
 #[gen_stub_pymethods]
 #[pymethods]
 impl GameState {
+    /// Returns the current position of the agent.
     #[getter]
     fn agent_position(&self) -> (usize, usize) {
         self.board.agent_position
     }
 
-    /// The ghost's position as currently observed by the agent: `None` if
-    /// there's no ghost, or if one exists but isn't currently visible (e.g.
-    /// behind a wall, when `ghost_occlusion` is enabled); otherwise its real
-    /// position.
+    /// Returns the position of the ghost as observed by the agent. If there is
+    /// no ghost, or if the ghost isn't currently visible (i.e., inside a wall
+    /// or behind a wall when `ghost_occlusion` is enabled), returns None.
     #[getter]
     fn ghost_position(&self) -> Option<(usize, usize)> {
         let ghost = self.board.ghost_position?;
@@ -61,6 +69,12 @@ impl GameState {
         Some(ghost)
     }
 
+    /// Returns a list of `width * height` game states. These are states where
+    /// the agent's position is varied across all positions. If there is a ghost,
+    /// each of these states has the ghost's position fixed at its current one,
+    /// and this function returns an additional `width * height` game states
+    /// where the ghost's position is instead varied across all positions. Note
+    /// that invalid states are not filtered out.
     fn all_states(&self) -> Vec<GameState> {
         let (width, height) = (self.board.width, self.board.height);
         let mut states = Vec::new();
@@ -88,11 +102,16 @@ impl GameState {
         states
     }
 
+    /// Returns the game state that would result from the agent moving in the
+    /// given direction. This move is deterministic, and does not update the
+    /// ghost's position.
     fn next_state(&self, action: Action) -> GameState {
         let board = self.board.transition_det(action, Agent::Player);
         GameState::from(board).with_runtime_from(self)
     }
 
+    /// Returns a copy of the current game state with a fixed episode seed,
+    /// used to determine the actions taken by the agent and the ghost.
     pub fn with_seed(&self, seed: u64) -> GameState {
         let mut new_state = self.clone();
         new_state.rng_seed = seed;
@@ -100,12 +119,17 @@ impl GameState {
         new_state
     }
 
+    /// Returns a new game state resulting from one full environment step.
+    /// This step is not deterministic, and updates both the agent and the
+    /// ghost's position using the episode seed. Fails for the Teleop ghost.
     pub fn step(&mut self, action: Action) -> GameState {
         let state = self.transition(action);
         assert_eq!(state.active_player, Agent::Player);
         state
     }
 
+    /// Returns a new game state set to the original configuration, along with
+    /// its episode seed.
     fn reset(&self) -> (GameState, u64) {
         let state = GameState::from((*self.initial_board).clone())
             .with_initial_board(&self.initial_board)

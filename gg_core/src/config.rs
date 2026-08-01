@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 #[gen_stub_pyclass_enum]
 #[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+
+/// Represents a policy for the ghost.
 pub enum GhostPolicy {
     Random,
     Chaser,
@@ -21,20 +23,24 @@ pub enum GhostPolicy {
 #[derive(Debug, Clone, Derivative, Serialize, Deserialize)]
 #[derivative(Default)]
 #[serde(default)]
+/// Stores the configuration of the agent and the ghost, if there is one.
 pub struct AgentConfig {
+    /// Returns the name of the agent.
     #[pyo3(get, set)]
     #[derivative(Default(value = "\"Agent\".to_string()"))]
     pub name: String,
 
+    /// Returns the ghost's policy, if there is one.
     #[pyo3(get, set)]
     pub ghost_policy: Option<GhostPolicy>,
 
+    /// Returns the probabilities that the agent's actual action are
+    /// [intended, right, back, left]. Entries must be nonnegative and sum to 1.
     #[pyo3(get, set)]
     pub transition: [f32; 4],
 
     /// When true, a ghost hidden behind a wall (no line of sight from the
-    /// agent) is treated as if it were at the agent's own position for
-    /// policy-lookup purposes, the same convention used when no ghost exists.
+    /// agent) is not observed by the agent, for policy look-up purposes.
     #[pyo3(get, set)]
     pub ghost_occlusion: bool,
 }
@@ -87,11 +93,14 @@ impl CameraConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
 #[serde(default)]
+/// Stores the configuration of all goblets.
 pub struct GobletConfig {
+    /// Returns the initial number of goblets.
     #[pyo3(get, set)]
     #[derivative(Default(value = "1"))]
     pub number: usize,
 
+    /// Returns the maximum reward of any goblet.
     #[pyo3(get, set)]
     #[derivative(Default(value = "10"))]
     pub max_reward: u32,
@@ -113,13 +122,12 @@ impl GobletConfig {
     }
 }
 
-/// Procedural world-generation parameters. Ignored (except `cell_size`, which
-/// still controls rendering scale) when `GGConfig.world_file` is set.
 #[gen_stub_pyclass]
 #[pyclass(name = "WorldGenerationConfig")]
 #[derive(Debug, Clone, Derivative, Serialize, Deserialize)]
 #[derivative(Default)]
 #[serde(default)]
+/// Stores the configuration of the gridworld.
 pub struct WorldGenerationConfig {
     #[pyo3(get, set)]
     #[derivative(Default(value = "100.0"))]
@@ -127,9 +135,11 @@ pub struct WorldGenerationConfig {
     #[pyo3(get, set)]
     #[derivative(Default(value = "100.0"))]
     pub world_height: f32,
+    /// Returns the initial number of obstacles.
     #[pyo3(get, set)]
     #[derivative(Default(value = "5"))]
     pub num_obstacles: usize,
+    /// Returns the maximum radius of an obstacle in number of cells.
     #[pyo3(get, set)]
     #[derivative(Default(value = "3"))]
     pub obstacle_radius_cells: usize,
@@ -141,7 +151,7 @@ pub struct WorldGenerationConfig {
 #[gen_stub_pymethods]
 #[pymethods]
 impl WorldGenerationConfig {
-    /// Returns the size of the maze as (width, height)
+    /// Returns the size of the world as a (width, height) tuple.
     #[getter]
     fn size(&self) -> (usize, usize) {
         (
@@ -169,6 +179,7 @@ impl WorldGenerationConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
 #[serde(default)]
+/// Represents the entire configuration of the game.
 pub struct GGConfig {
     #[pyo3(get, set)]
     pub agent: AgentConfig,
