@@ -18,8 +18,9 @@ pub struct GameState {
     #[pyo3(get)]
     pub board: Board,
     /// Represents the immediate reward of the current state. Equals the
-    /// minimum integer if the agent has been caught by the ghost, the value
-    /// of a goblet if the agent has found a goblet, and zero otherwise.
+    /// configured ghost penalty if the agent has been caught by the ghost,
+    /// the value of a goblet if the agent has found a goblet, and zero
+    /// otherwise.
     #[pyo3(get)]
     pub reward: i32,
     /// Returns True if the agent has collected a goblet or has been caught
@@ -35,12 +36,41 @@ pub struct GameState {
 }
 
 impl GameState {
+    fn caught_reward(config: &GGConfig) -> i32 {
+        config.agent.ghost_penalty
+    }
+
+    fn outcome_for(board: &Board, config: &GGConfig) -> (i32, bool) {
+        let caught = board.ghost_position == Some(board.agent_position);
+        let goblet_reward = board
+            .goblets
+            .iter()
+            .map(|g| (g.position, g.reward))
+            .find(|(pos, _)| *pos == board.agent_position)
+            .map(|(_, value)| value);
+
+        let reward = if caught {
+            Self::caught_reward(config)
+        } else if let Some(value) = goblet_reward {
+            value
+        } else {
+            0
+        };
+
+        (reward, caught || goblet_reward.is_some())
+    }
+
+    fn refresh_outcome(mut self) -> Self {
+        (self.reward, self.done) = Self::outcome_for(&self.board, &self.config);
+        self
+    }
+
     fn with_runtime_from(mut self, other: &GameState) -> Self {
         self.initial_board = other.initial_board.clone();
         self.rng = other.rng.clone();
         self.rng_seed = other.rng_seed;
         self.config = other.config.clone();
-        self
+        self.refresh_outcome()
     }
 }
 
@@ -155,24 +185,9 @@ impl GameState {
 
 impl From<Board> for GameState {
     fn from(board: Board) -> Self {
-        let reward = if let Some(ghost_position) = board.ghost_position
-            && board.agent_position == ghost_position
-        {
-            i32::MIN
-        } else if let Some((_, value)) = board
-            .goblets
-            .iter()
-            .map(|g| (g.position, g.reward))
-            .find(|(pos, _)| *pos == board.agent_position)
-        {
-            value
-        } else {
-            0
-        };
-
-        let done = reward != 0;
-
         let seed = rand::random::<u32>();
+        let config = GGConfig::default();
+        let (reward, done) = Self::outcome_for(&board, &config);
 
         Self {
             board: board.clone(),
@@ -182,7 +197,7 @@ impl From<Board> for GameState {
             initial_board: Box::new(board),
             rng: WyRand::from_seed(u64::from(seed).to_ne_bytes()),
             rng_seed: seed.into(),
-            config: GGConfig::default(),
+            config,
         }
     }
 }
@@ -281,7 +296,7 @@ impl GameState {
 
     pub fn with_config(mut self, config: &GGConfig) -> Self {
         self.config = config.clone();
-        self
+        self.refresh_outcome()
     }
 }
 
@@ -325,6 +340,48 @@ mod tests {
         let next = state.step_teleop(Action::Right, None);
         assert_eq!(next.board.agent_position, (1, 0));
         assert_eq!(next.board.ghost_position, Some((4, 4)));
+    }
+
+    #[test]
+    fn caught_reward_uses_configured_ghost_penalty() {
+        let board = Board {
+            agent_position: (2, 2),
+            ghost_position: Some((2, 2)),
+            goblets: Vec::new(),
+            wall_positions: HashSet::new(),
+            width: 5,
+            height: 5,
+        };
+        let config = GGConfig {
+            agent: AgentConfig {
+                ghost_penalty: -70,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let state = GameState::from(board).with_config(&config);
+        assert_eq!(state.reward, -70);
+        assert!(state.done);
+    }
+
+    #[test]
+    fn zero_reward_goblet_is_still_terminal() {
+        let board = Board {
+            agent_position: (2, 2),
+            ghost_position: None,
+            goblets: vec![crate::goblet::Goblet {
+                position: (2, 2),
+                reward: 0,
+            }],
+            wall_positions: HashSet::new(),
+            width: 5,
+            height: 5,
+        };
+
+        let state = GameState::from(board);
+        assert_eq!(state.reward, 0);
+        assert!(state.done);
     }
 
     #[test]

@@ -34,6 +34,11 @@ pub struct AgentConfig {
     #[pyo3(get)]
     pub ghost_policy: Option<GhostPolicy>,
 
+    /// Returns the reward applied when the ghost catches the agent.
+    #[pyo3(get)]
+    #[derivative(Default(value = "-100"))]
+    pub ghost_penalty: i32,
+
     /// When true, a ghost inside or hidden behind a wall (i.e., with no line
     /// of sight from the agent) is not observed for policy look-up purposes.
     #[pyo3(get)]
@@ -239,6 +244,15 @@ impl GGConfig {
     #[setter(ghost_policy)]
     fn set_ghost_policy(&mut self, value: Option<GhostPolicy>) {
         self.agent.ghost_policy = value;
+    }
+
+    #[getter(ghost_penalty)]
+    fn get_ghost_penalty(&self) -> i32 {
+        self.agent.ghost_penalty
+    }
+    #[setter(ghost_penalty)]
+    fn set_ghost_penalty(&mut self, value: i32) {
+        self.agent.ghost_penalty = value;
     }
 
     #[getter(ghost_occlusion)]

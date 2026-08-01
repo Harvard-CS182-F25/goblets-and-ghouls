@@ -20,6 +20,11 @@ class AgentConfig:
         Returns the ghost's policy, if there is one.
         """
     @property
+    def ghost_penalty(self) -> builtins.int:
+        r"""
+        Returns the reward applied when the ghost catches the agent.
+        """
+    @property
     def ghost_occlusion(self) -> builtins.bool:
         r"""
         When true, a ghost inside or hidden behind a wall (i.e., with no line
@@ -161,6 +166,10 @@ class GGConfig:
     @ghost_policy.setter
     def ghost_policy(self, value: typing.Optional[GhostPolicy]) -> None: ...
     @property
+    def ghost_penalty(self) -> builtins.int: ...
+    @ghost_penalty.setter
+    def ghost_penalty(self, value: builtins.int) -> None: ...
+    @property
     def ghost_occlusion(self) -> builtins.bool: ...
     @ghost_occlusion.setter
     def ghost_occlusion(self, value: builtins.bool) -> None: ...
@@ -225,8 +234,9 @@ class GameState:
     def reward(self) -> builtins.int:
         r"""
         Represents the immediate reward of the current state. Equals the
-        minimum integer if the agent has been caught by the ghost, the value
-        of a goblet if the agent has found a goblet, and zero otherwise.
+        configured ghost penalty if the agent has been caught by the ghost,
+        the value of a goblet if the agent has found a goblet, and zero
+        otherwise.
         """
     @property
     def done(self) -> builtins.bool:

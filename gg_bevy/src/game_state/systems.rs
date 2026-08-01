@@ -519,7 +519,7 @@ pub fn show_game_over_overlay(
         return;
     }
 
-    let (message, text_color) = if game_state.0.reward == i32::MIN {
+    let (message, text_color) = if game_state.0.board.ghost_position == Some(game_state.0.board.agent_position) {
         ("Caught", Color::srgb(0.85, 0.15, 0.15))
     } else if game_state.0.reward > 0 {
         ("Escaped", Color::srgb(0.15, 0.75, 0.15))
