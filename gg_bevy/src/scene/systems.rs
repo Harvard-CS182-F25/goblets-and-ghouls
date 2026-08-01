@@ -134,15 +134,15 @@ pub fn setup_key_instructions(
                     });
             }
             parent.spawn((
-                Text::new("F: Toggle Agent Visibility Overlay"),
+                Text::new("O: Toggle Ghost Occlusion Overlay"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
                 },
                 TextColor(if ghost_occlusion_enabled {
-                    Color::srgb(0.7, 0.7, 0.7)
-                } else {
                     Color::WHITE
+                } else {
+                    Color::srgb(0.7, 0.7, 0.7)
                 }),
                 TextLayout::new_with_justify(Justify::Right),
             ));
