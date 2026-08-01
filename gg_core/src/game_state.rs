@@ -55,18 +55,13 @@ impl GameState {
 
     /// Returns the position of the ghost as observed by the agent. If there is
     /// no ghost, or if the ghost isn't currently visible (i.e., inside a wall
-    /// or behind a wall when `ghost_occlusion` is enabled), returns None.
+    /// or behind a wall) when `ghost_occlusion` is enabled, returns None.
     #[getter]
     fn ghost_position(&self) -> Option<(usize, usize)> {
-        let ghost = self.board.ghost_position?;
-        if self.config.agent.ghost_occlusion
-            && !self
-                .board
-                .has_line_of_sight(self.board.agent_position, ghost)
-        {
-            return None;
-        }
-        Some(ghost)
+        self.board.observed_ghost_position_for(
+            self.board.agent_position,
+            self.config.agent.ghost_occlusion,
+        )
     }
 
     /// Returns a list of `width * height` game states. These are states where

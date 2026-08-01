@@ -22,8 +22,8 @@ class AgentConfig:
     @property
     def ghost_occlusion(self) -> builtins.bool:
         r"""
-        When true, a ghost hidden behind a wall (no line of sight from the
-        agent) is not observed by the agent, for policy look-up purposes.
+        When true, a ghost inside or hidden behind a wall (i.e., with no line
+        of sight from the agent) is not observed for policy look-up purposes.
         """
     @property
     def transition(self) -> builtins.list[builtins.float]:
@@ -244,7 +244,7 @@ class GameState:
         r"""
         Returns the position of the ghost as observed by the agent. If there is
         no ghost, or if the ghost isn't currently visible (i.e., inside a wall
-        or behind a wall when `ghost_occlusion` is enabled), returns None.
+        or behind a wall) when `ghost_occlusion` is enabled, returns None.
         """
     def all_states(self) -> builtins.list[GameState]:
         r"""

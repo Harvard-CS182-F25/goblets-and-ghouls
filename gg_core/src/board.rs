@@ -226,6 +226,23 @@ impl Board {
         crate::los::has_line_of_sight(from, to, &self.wall_positions)
     }
 
+    /// The ghost position directly observed from `agent_pos`, if any. With
+    /// occlusion enabled, a ghost inside a wall or behind a wall is hidden.
+    pub fn observed_ghost_position_for(
+        &self,
+        agent_pos: (usize, usize),
+        occlusion_enabled: bool,
+    ) -> Option<(usize, usize)> {
+        let ghost = self.ghost_position?;
+        if occlusion_enabled
+            && (self.wall_positions.contains(&ghost) || !self.has_line_of_sight(agent_pos, ghost))
+        {
+            None
+        } else {
+            Some(ghost)
+        }
+    }
+
     /// The ghost position a policy should be indexed with, as observed from
     /// `agent_pos`: the ghost's real position if one exists and (when
     /// `occlusion_enabled`) is visible from `agent_pos`, otherwise `agent_pos`
@@ -236,13 +253,8 @@ impl Board {
         agent_pos: (usize, usize),
         occlusion_enabled: bool,
     ) -> (usize, usize) {
-        match self.ghost_position {
-            None => agent_pos,
-            Some(ghost) if occlusion_enabled && !self.has_line_of_sight(agent_pos, ghost) => {
-                agent_pos
-            }
-            Some(ghost) => ghost,
-        }
+        self.observed_ghost_position_for(agent_pos, occlusion_enabled)
+            .unwrap_or(agent_pos)
     }
 
     /// [`Board::effective_ghost_position_for`] observed from the actual
@@ -320,6 +332,18 @@ mod tests {
 
         assert_eq!(board.effective_ghost_position(false), (4, 0));
         assert_eq!(board.effective_ghost_position(true), (0, 0));
+    }
+
+    #[test]
+    fn ghost_inside_wall_is_hidden_only_when_occlusion_is_enabled() {
+        let mut walls = HashSet::new();
+        walls.insert((4, 0));
+        let board = board_with((0, 0), Some((4, 0)), walls);
+
+        assert_eq!(board.effective_ghost_position(false), (4, 0));
+        assert_eq!(board.effective_ghost_position(true), (0, 0));
+        assert_eq!(board.observed_ghost_position_for((0, 0), false), Some((4, 0)));
+        assert_eq!(board.observed_ghost_position_for((0, 0), true), None);
     }
 
     #[test]
