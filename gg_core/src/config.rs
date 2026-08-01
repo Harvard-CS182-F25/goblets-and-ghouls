@@ -26,22 +26,22 @@ pub enum GhostPolicy {
 /// Stores the configuration of the agent and the ghost, if there is one.
 pub struct AgentConfig {
     /// Returns the name of the agent.
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     #[derivative(Default(value = "\"Agent\".to_string()"))]
     pub name: String,
 
     /// Returns the ghost's policy, if there is one.
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub ghost_policy: Option<GhostPolicy>,
 
     /// Returns the probabilities that the agent's actual action are
     /// [intended, right, back, left]. Entries must be nonnegative and sum to 1.
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub transition: [f32; 4],
 
     /// When true, a ghost hidden behind a wall (no line of sight from the
     /// agent) is not observed by the agent, for policy look-up purposes.
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub ghost_occlusion: bool,
 }
 
@@ -67,7 +67,7 @@ impl AgentConfig {
 #[derivative(Default)]
 #[serde(default)]
 pub struct CameraConfig {
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     #[derivative(Default(value = "-0.15"))]
     pub scale: f32,
 }
@@ -96,12 +96,12 @@ impl CameraConfig {
 /// Stores the configuration of all goblets.
 pub struct GobletConfig {
     /// Returns the initial number of goblets.
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     #[derivative(Default(value = "1"))]
     pub number: usize,
 
     /// Returns the maximum reward of any goblet.
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     #[derivative(Default(value = "10"))]
     pub max_reward: u32,
 }
@@ -129,21 +129,21 @@ impl GobletConfig {
 #[serde(default)]
 /// Stores the configuration of the gridworld.
 pub struct WorldGenerationConfig {
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     #[derivative(Default(value = "100.0"))]
     pub world_width: f32,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     #[derivative(Default(value = "100.0"))]
     pub world_height: f32,
     /// Returns the initial number of obstacles.
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     #[derivative(Default(value = "5"))]
     pub num_obstacles: usize,
     /// Returns the maximum radius of an obstacle in number of cells.
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     #[derivative(Default(value = "3"))]
     pub obstacle_radius_cells: usize,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     #[derivative(Default(value = "5.0"))]
     pub cell_size: f32,
 }
