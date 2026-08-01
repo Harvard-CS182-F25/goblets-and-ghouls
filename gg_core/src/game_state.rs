@@ -39,6 +39,28 @@ impl GameState {
 #[gen_stub_pymethods]
 #[pymethods]
 impl GameState {
+    #[getter]
+    fn agent_position(&self) -> (usize, usize) {
+        self.board.agent_position
+    }
+
+    /// The ghost's position as currently observed by the agent: `None` if
+    /// there's no ghost, or if one exists but isn't currently visible (e.g.
+    /// behind a wall, when `ghost_occlusion` is enabled); otherwise its real
+    /// position.
+    #[getter]
+    fn ghost_position(&self) -> Option<(usize, usize)> {
+        let ghost = self.board.ghost_position?;
+        if self.config.agent.ghost_occlusion
+            && !self
+                .board
+                .has_line_of_sight(self.board.agent_position, ghost)
+        {
+            return None;
+        }
+        Some(ghost)
+    }
+
     fn all_states(&self) -> Vec<GameState> {
         let (width, height) = (self.board.width, self.board.height);
         let mut states = Vec::new();
@@ -69,23 +91,6 @@ impl GameState {
     fn next_state(&self, action: Action) -> GameState {
         let board = self.board.transition_det(action, Agent::Player);
         GameState::from(board).with_runtime_from(self)
-    }
-
-    /// The ghost's position as currently observed by the agent: `None` if
-    /// there's no ghost, or if one exists but isn't currently visible (e.g.
-    /// behind a wall, when `ghost_occlusion` is enabled); otherwise its real
-    /// position.
-    #[getter]
-    fn ghost_position(&self) -> Option<(usize, usize)> {
-        let ghost = self.board.ghost_position?;
-        if self.config.agent.ghost_occlusion
-            && !self
-                .board
-                .has_line_of_sight(self.board.agent_position, ghost)
-        {
-            return None;
-        }
-        Some(ghost)
     }
 
     pub fn with_seed(&self, seed: u64) -> GameState {
