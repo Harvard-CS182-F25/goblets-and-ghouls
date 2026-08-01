@@ -152,7 +152,7 @@ pub fn update_hover_box(
 
     // Independent of ghost_occlusion (which only gates the ghost's own
     // visibility) — plain agent-to-cell line of sight, same predicate
-    // `update_visibility_overlay` uses for the "F" overlay.
+    // `update_visibility_overlay` uses for the visibility overlay.
     let visible = game_state
         .0
         .board

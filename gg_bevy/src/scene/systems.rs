@@ -134,7 +134,7 @@ pub fn setup_key_instructions(
                     });
             }
             parent.spawn((
-                Text::new("O: Toggle Ghost Occlusion Overlay"),
+                Text::new("O: Toggle Ghost Visibility Overlay"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
