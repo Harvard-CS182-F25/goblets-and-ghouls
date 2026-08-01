@@ -150,13 +150,29 @@ pub fn update_hover_box(
         None => String::new(),
     };
 
-    // Independent of ghost_occlusion (which only gates the ghost's own
-    // visibility) — plain agent-to-cell line of sight, same predicate
-    // `update_visibility_overlay` uses for the visibility overlay.
-    let visible = game_state
+    let hovered_ghost = game_state.0.board.ghost_position == Some(agent_position);
+    let reward = if hovered_ghost {
+        config.0.agent.ghost_penalty
+    } else if let Some(&Goblet { reward, .. }) = game_state
         .0
         .board
-        .has_line_of_sight(game_state.0.board.agent_position, agent_position);
+        .goblets
+        .iter()
+        .find(|g| g.position.0 == cell.x as usize && g.position.1 == cell.y as usize)
+    {
+        reward
+    } else {
+        0
+    };
+
+    let visible = if config.0.agent.ghost_occlusion {
+        game_state
+            .0
+            .board
+            .has_line_of_sight(game_state.0.board.agent_position, agent_position)
+    } else {
+        true
+    };
 
     text.0 = format!(
         "Cell:         ({},{})\n\
@@ -165,16 +181,7 @@ pub fn update_hover_box(
         Visible: {}",
         cell.x,
         cell.y,
-        if let Some(&Goblet { reward, .. }) = game_state.0.board.goblets.iter().find(|g| g
-            .position
-            .0
-            == cell.x as usize
-            && g.position.1 == cell.y as usize)
-        {
-            reward
-        } else {
-            0
-        },
+        reward,
         policy_action,
         value_line,
         if visible { "Yes" } else { "No" }

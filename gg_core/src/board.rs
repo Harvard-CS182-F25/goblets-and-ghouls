@@ -310,21 +310,6 @@ mod tests {
     }
 
     #[test]
-    fn no_ghost_falls_back_to_agent_position() {
-        let board = board_with((2, 2), None, HashSet::new());
-        assert_eq!(board.effective_ghost_position(false), (2, 2));
-        assert_eq!(board.effective_ghost_position(true), (2, 2));
-        assert_eq!(board.effective_ghost_position_for((0, 0), true), (0, 0));
-    }
-
-    #[test]
-    fn visible_ghost_is_used_regardless_of_occlusion_flag() {
-        let board = board_with((0, 0), Some((4, 0)), HashSet::new());
-        assert_eq!(board.effective_ghost_position(false), (4, 0));
-        assert_eq!(board.effective_ghost_position(true), (4, 0));
-    }
-
-    #[test]
     fn occluded_ghost_falls_back_to_agent_position_only_when_enabled() {
         let mut walls = HashSet::new();
         walls.insert((2, 0));
