@@ -187,7 +187,7 @@ impl GameState {
     }
 
     /// Returns a new game state set to the original configuration, along with
-    /// its episode seed.
+    /// a fresh episode seed.
     pub fn reset(&self) -> (GameState, u64) {
         let state = GameState::from((*self.initial_board).clone())
             .with_initial_board(&self.initial_board)

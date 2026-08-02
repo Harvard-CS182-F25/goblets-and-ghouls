@@ -51,11 +51,7 @@ class Board:
     @property
     def agent_position(self) -> tuple[builtins.int, builtins.int]: ...
     @property
-    def ghost_position(self) -> typing.Optional[tuple[builtins.int, builtins.int]]:
-        r"""
-        Returns the true position of the ghost, regardless of visibility.
-        If there is no ghost, returns None.
-        """
+    def ghost_position(self) -> typing.Optional[tuple[builtins.int, builtins.int]]: ...
     @property
     def goblets(self) -> builtins.list[Goblet]: ...
     @property
@@ -293,7 +289,7 @@ class GameState:
     def reset(self) -> tuple[GameState, builtins.int]:
         r"""
         Returns a new game state set to the original configuration, along with
-        its episode seed.
+        a fresh episode seed.
         """
     def __repr__(self) -> builtins.str: ...
     def __str__(self) -> builtins.str: ...

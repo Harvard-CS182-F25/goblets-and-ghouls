@@ -24,8 +24,6 @@ pub struct Board {
     pub height: usize,
     #[pyo3(get)]
     pub agent_position: (usize, usize),
-    /// Returns the true position of the ghost, regardless of visibility.
-    /// If there is no ghost, returns None.
     #[pyo3(get)]
     pub ghost_position: Option<(usize, usize)>,
     #[pyo3(get)]
