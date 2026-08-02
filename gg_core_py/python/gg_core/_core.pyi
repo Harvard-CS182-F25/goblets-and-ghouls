@@ -27,8 +27,10 @@ class AgentConfig:
     @property
     def ghost_occlusion(self) -> builtins.bool:
         r"""
-        When true, a ghost inside or hidden behind a wall (i.e., with no line
-        of sight from the agent) is not observed for policy look-up purposes.
+        When true, a ghost hidden behind a wall (i.e., with no line of sight
+        from the agent) is not observed for policy look-up purposes. Defaults
+        to false. Invalid or hypothetical states where the ghost is inside a
+        wall are also treated as hidden.
         """
     @property
     def transition(self) -> builtins.list[builtins.float]:
@@ -242,11 +244,12 @@ class GameState:
         Returns the current position of the agent.
         """
     @property
-    def ghost_position(self) -> typing.Optional[tuple[builtins.int, builtins.int]]:
+    def observed_ghost_position(self) -> typing.Optional[tuple[builtins.int, builtins.int]]:
         r"""
         Returns the position of the ghost as observed by the agent. If there is
-        no ghost, or if the ghost isn't currently visible (i.e., inside a wall
-        or behind a wall) when `ghost_occlusion` is enabled, returns None.
+        no ghost, or if the ghost isn't currently visible (e.g., behind a wall)
+        when `ghost_occlusion` is enabled, returns None. Invalid states (e.g.,
+        where the ghost is inside a wall) are also treated as hidden.
         """
     @property
     def visible_goblet_positions(self) -> builtins.list[tuple[builtins.int, builtins.int]]:

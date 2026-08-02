@@ -39,8 +39,10 @@ pub struct AgentConfig {
     #[derivative(Default(value = "-100"))]
     pub ghost_penalty: i32,
 
-    /// When true, a ghost inside or hidden behind a wall (i.e., with no line
-    /// of sight from the agent) is not observed for policy look-up purposes.
+    /// When true, a ghost hidden behind a wall (i.e., with no line of sight
+    /// from the agent) is not observed for policy look-up purposes. Defaults
+    /// to false. Invalid or hypothetical states where the ghost is inside a
+    /// wall are also treated as hidden.
     #[pyo3(get)]
     pub ghost_occlusion: bool,
 

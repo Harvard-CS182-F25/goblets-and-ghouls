@@ -212,7 +212,9 @@ impl Board {
                         .clamp(0, board.height - 1);
                     let new_position = (new_x, new_y);
 
-                    board.ghost_position = Some(new_position);
+                    if !board.wall_positions.contains(&new_position) {
+                        board.ghost_position = Some(new_position);
+                    }
                 }
             }
         };
@@ -227,7 +229,9 @@ impl Board {
     }
 
     /// The ghost position directly observed from `agent_pos`, if any. With
-    /// occlusion enabled, a ghost inside a wall or behind a wall is hidden.
+    /// occlusion enabled, a ghost hidden behind a wall is hidden; invalid or
+    /// hypothetical states where the ghost is inside a wall are also treated
+    /// as hidden.
     pub fn observed_ghost_position_for(
         &self,
         agent_pos: (usize, usize),
