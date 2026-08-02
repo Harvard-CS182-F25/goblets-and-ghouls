@@ -6,7 +6,7 @@ use crate::resources::{
     ConfigResource, GameStateResource, PolicyResource, PolicyTimer, RestartedThisFrame,
     SimulationPaused,
 };
-use crate::scene::WALL_HEIGHT;
+use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, WALL_HEIGHT};
 
 use super::components::{
     Agent, AgentBundle, GhostAgent, GhostAgentBundle, GhostInput, PauseIndicatorBadge,
@@ -30,7 +30,7 @@ pub fn spawn_agents(
         cell,
         world_width,
         world_height,
-        0.0,
+        AGENT_HEIGHT / 2.0,
     );
 
     let entity = commands
@@ -43,7 +43,7 @@ pub fn spawn_agents(
             cell,
             world_width,
             world_height,
-            WALL_HEIGHT + 1.0,
+            WALL_HEIGHT + GHOST_HEIGHT / 2.0,
         );
         Some(
             commands
@@ -57,16 +57,17 @@ pub fn spawn_agents(
     if let Some(graphics) = graphics
         && let Some(mut meshes) = meshes
     {
-        let mesh = meshes.add(Cuboid::new(cell, cell, cell));
+        let agent_mesh = meshes.add(Cuboid::new(cell, AGENT_HEIGHT, cell));
+        let ghost_mesh = meshes.add(Cuboid::new(cell, GHOST_HEIGHT, cell));
 
         commands.entity(entity).insert((
-            Mesh3d(mesh.clone()),
+            Mesh3d(agent_mesh),
             MeshMaterial3d(graphics.material.clone()),
         ));
 
         if let Some(ghost_entity) = ghost_entity {
             commands.entity(ghost_entity).insert((
-                Mesh3d(mesh.clone()),
+                Mesh3d(ghost_mesh),
                 MeshMaterial3d(graphics.ghost_material.clone()),
             ));
         }
@@ -86,14 +87,14 @@ fn sync_actor_transforms(
 
     for (mut transform, is_agent, is_ghost) in query.iter_mut() {
         let (position, y) = if is_agent.is_some() {
-            (state.board.agent_position, 0.0)
+            (state.board.agent_position, AGENT_HEIGHT / 2.0)
         } else if is_ghost.is_some() {
             (
                 state
                     .board
                     .ghost_position
                     .expect("Ghost position should exist"),
-                WALL_HEIGHT + 1.0,
+                WALL_HEIGHT + GHOST_HEIGHT / 2.0,
             )
         } else {
             continue;

@@ -10,6 +10,9 @@ pub use visual::*;
 use crate::core::StartupSets;
 use crate::resources::ConfigResource;
 
+pub const AGENT_HEIGHT: f32 = 4.0;
+pub const GHOST_HEIGHT: f32 = 4.0;
+pub const GOBLET_HEIGHT: f32 = 3.0;
 pub const WALL_HEIGHT: f32 = 5.0;
 
 pub struct ScenePlugin;

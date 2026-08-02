@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use crate::agent::AgentGraphicsAssets;
 use crate::coords::{cell_to_world, world_dimensions};
 use crate::goblet::GobletGraphicsAssets;
-use crate::scene::{GroundPlane, WALL_HEIGHT, WallGraphicsAssets};
+use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, GOBLET_HEIGHT, WALL_HEIGHT, GroundPlane, WallGraphicsAssets};
 
 use super::{CELL_SIZE, EditorBoard, EditorState, EditorTile};
 
@@ -86,8 +86,14 @@ fn apply_tile_visual(
             ));
         }
         EditorTile::Agent => {
-            let mesh = meshes.add(Cuboid::new(CELL_SIZE, CELL_SIZE, CELL_SIZE));
-            let translation = cell_to_world(position, CELL_SIZE, world_width, world_height, 0.0);
+            let mesh = meshes.add(Cuboid::new(CELL_SIZE, AGENT_HEIGHT, CELL_SIZE));
+            let translation = cell_to_world(
+                position,
+                CELL_SIZE,
+                world_width,
+                world_height,
+                AGENT_HEIGHT / 2.0,
+            );
             entity.insert((
                 Mesh3d(mesh),
                 MeshMaterial3d(agent_graphics.material.clone()),
@@ -95,13 +101,13 @@ fn apply_tile_visual(
             ));
         }
         EditorTile::Ghost => {
-            let mesh = meshes.add(Cuboid::new(CELL_SIZE, CELL_SIZE, CELL_SIZE));
+            let mesh = meshes.add(Cuboid::new(CELL_SIZE, GHOST_HEIGHT, CELL_SIZE));
             let translation = cell_to_world(
                 position,
                 CELL_SIZE,
                 world_width,
                 world_height,
-                WALL_HEIGHT + 1.0,
+                WALL_HEIGHT + GHOST_HEIGHT / 2.0,
             );
             entity.insert((
                 Mesh3d(mesh),
@@ -110,8 +116,14 @@ fn apply_tile_visual(
             ));
         }
         EditorTile::Goblet(reward) => {
-            let mesh = meshes.add(Cylinder::new(CELL_SIZE / 2.0, 3.0));
-            let translation = cell_to_world(position, CELL_SIZE, world_width, world_height, 0.0);
+            let mesh = meshes.add(Cylinder::new(CELL_SIZE / 2.0, GOBLET_HEIGHT));
+            let translation = cell_to_world(
+                position,
+                CELL_SIZE,
+                world_width,
+                world_height,
+                GOBLET_HEIGHT / 2.0,
+            );
             let material = if reward > 0 {
                 goblet_graphics.material.clone()
             } else {
