@@ -61,10 +61,6 @@ fn run(
 
     if let Some(episode_seed) = config.episode_seed {
         initial_state = initial_state.with_seed(episode_seed.into());
-    } else {
-        let episode_seed = initial_state.rng_seed as u32;
-        config.episode_seed = Some(episode_seed);
-        initial_state.config.episode_seed = Some(episode_seed);
     }
 
     let episode_seed = initial_state.rng_seed;

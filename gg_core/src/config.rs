@@ -201,6 +201,9 @@ pub struct GGConfig {
     pub render_delay_secs: f32,
     #[pyo3(get, set)]
     pub generation_seed: Option<u32>,
+    /// Optional episode seed used when constructing the initial game state.
+    /// This controls the first episode's RNG, but `GameState.reset()` does
+    /// not consult it unless a caller explicitly passes that seed back in.
     #[pyo3(get, set)]
     pub episode_seed: Option<u32>,
     #[pyo3(get, set)]
@@ -345,16 +348,6 @@ impl GGConfig {
     #[setter(cell_size)]
     fn set_cell_size(&mut self, value: f32) {
         self.world_generation.cell_size = value;
-    }
-
-    /// The size of the board as (width, height) — same as
-    /// `config.world_generation.size`, flattened for convenience. Only
-    /// reflects the *procedurally-generated* size; when `world_file` is
-    /// set, read the actual board size from `GameState.board.width/height`
-    /// instead.
-    #[getter(size)]
-    fn get_size(&self) -> (usize, usize) {
-        self.world_generation.size()
     }
 
     fn __repr__(&self) -> PyResult<String> {

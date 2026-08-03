@@ -83,7 +83,6 @@ impl GameState {
         self.board.agent_position
     }
 
-    
     /// Returns the position of the ghost as observed by the agent. If there is
     /// no ghost, or if the ghost isn't currently visible (e.g., behind a wall)
     /// when `ghost_occlusion` is enabled, returns None. Invalid states (e.g.,
@@ -127,33 +126,24 @@ impl GameState {
         visible_wall_positions
     }
 
-    /// Returns a list of `width * height` game states. These are states where
-    /// the agent's position is varied across all positions. If there is a ghost,
-    /// each of these states has the ghost's position fixed at its current one,
-    /// and this function returns an additional `width * height` game states
-    /// where the ghost's position is instead varied across all positions. Note
-    /// that invalid states are not filtered out.
+    /// Returns the episode seed driving this state's RNG.
+    #[getter]
+    fn episode_seed(&self) -> u64 {
+        self.rng_seed
+    }
+    
+    /// Returns a list of `width * height` game states where the agent's
+    /// position is varied across all cells. Note that invalid states are not
+    /// filtered out.
     fn all_states(&self) -> Vec<GameState> {
         let (width, height) = (self.board.width, self.board.height);
-        let mut states = Vec::new();
+        let mut states = Vec::with_capacity(width * height);
 
         for x in 0..width {
             for y in 0..height {
                 let mut new_board = self.board.clone();
                 new_board.agent_position = (x, y);
-                let new_state = GameState::from(new_board).with_runtime_from(self);
-                states.push(new_state);
-            }
-        }
-
-        if self.board.ghost_position.is_some() {
-            for x in 0..width {
-                for y in 0..height {
-                    let mut new_board = self.board.clone();
-                    new_board.ghost_position = Some((x, y));
-                    let new_state = GameState::from(new_board).with_runtime_from(self);
-                    states.push(new_state);
-                }
+                states.push(GameState::from(new_board).with_runtime_from(self));
             }
         }
 
@@ -168,15 +158,6 @@ impl GameState {
         GameState::from(board).with_runtime_from(self)
     }
 
-    /// Returns a copy of the current game state with a fixed episode seed,
-    /// used to determine the actions taken by the agent and the ghost.
-    pub fn with_seed(&self, seed: u64) -> GameState {
-        let mut new_state = self.clone();
-        new_state.rng_seed = seed;
-        new_state.rng = WyRand::from_seed(seed.to_ne_bytes());
-        new_state
-    }
-
     /// Returns a new game state resulting from one full environment step.
     /// This step is not deterministic, and updates both the agent and the
     /// ghost's position using the episode seed. Fails for the Teleop ghost.
@@ -186,18 +167,24 @@ impl GameState {
         state
     }
 
+    /// Returns a copy of the current game state with a fixed episode seed,
+    /// used to determine the actions taken by the agent and the ghost.
+    pub fn with_seed(&self, seed: u64) -> GameState {
+        let mut new_state = self.clone();
+        new_state.rng_seed = seed;
+        new_state.rng = WyRand::from_seed(seed.to_ne_bytes());
+        new_state
+    }
+
     /// Returns a new game state set to the original configuration, along with
-    /// a fresh episode seed.
-    pub fn reset(&self) -> (GameState, u64) {
+    /// the episode seed it uses. When `seed` is None, a fresh seed is sampled.
+    #[pyo3(signature = (seed=None))]
+    pub fn reset(&self, seed: Option<u64>) -> (GameState, u64) {
         let state = GameState::from((*self.initial_board).clone())
             .with_initial_board(&self.initial_board)
             .with_config(&self.config);
 
-        let seed = if let Some(seed) = self.config.episode_seed {
-            seed as u64
-        } else {
-            rand::random::<u32>().into()
-        };
+        let seed = seed.unwrap_or_else(|| rand::random::<u32>().into());
 
         let state = state.with_seed(seed);
 
@@ -487,5 +474,46 @@ mod tests {
             left = next_left;
             right = next_right;
         }
+    }
+
+    #[test]
+    fn reset_uses_explicit_seed_instead_of_config_seed() {
+        let board = Board {
+            agent_position: (2, 2),
+            ghost_position: Some((4, 4)),
+            goblets: Vec::new(),
+            wall_positions: HashSet::new(),
+            width: 6,
+            height: 6,
+        };
+        let config = GGConfig {
+            episode_seed: Some(1234),
+            ..Default::default()
+        };
+
+        let state = GameState::from(board).with_config(&config);
+        let (reset_state, reset_seed) = state.reset(Some(5678));
+
+        assert_eq!(reset_seed, 5678);
+        assert_eq!(reset_state.rng_seed, 5678);
+    }
+
+    #[test]
+    fn all_states_varies_only_agent_position() {
+        let board = Board {
+            agent_position: (1, 1),
+            ghost_position: Some((4, 4)),
+            goblets: Vec::new(),
+            wall_positions: HashSet::new(),
+            width: 3,
+            height: 2,
+        };
+        let state = GameState::from(board).with_seed(1234);
+
+        let states = state.all_states();
+
+        assert_eq!(states.len(), 6);
+        assert!(states.iter().all(|s| s.board.ghost_position == Some((4, 4))));
+        assert!(states.iter().all(|s| s.rng_seed == 1234));
     }
 }

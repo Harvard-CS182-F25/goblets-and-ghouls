@@ -107,7 +107,6 @@ fn sync_actor_transforms(
 pub fn restart_when_done(
     mut query: Query<(&mut Transform, Option<&Agent>, Option<&GhostAgent>)>,
     mut game_state: ResMut<GameStateResource>,
-    mut config: ResMut<ConfigResource>,
     mut timer: ResMut<PolicyTimer>,
     mut paused: ResMut<SimulationPaused>,
     mut restarted: ResMut<RestartedThisFrame>,
@@ -116,10 +115,8 @@ pub fn restart_when_done(
         return;
     }
 
-    let (mut state, episode_seed) = game_state.0.reset();
-    let episode_seed = episode_seed as u32;
-    state.config.episode_seed = Some(episode_seed);
-    config.0.episode_seed = Some(episode_seed);
+    let current_seed = game_state.0.rng_seed;
+    let (state, _) = game_state.0.reset(Some(current_seed));
     game_state.0 = state;
 
     sync_actor_transforms(&mut query, &game_state.0);

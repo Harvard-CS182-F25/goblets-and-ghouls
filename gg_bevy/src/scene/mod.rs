@@ -34,7 +34,7 @@ impl Plugin for ScenePlugin {
         );
         app.add_systems(
             Update,
-            systems::update_reward_text.run_if(|config: Res<ConfigResource>| !config.0.headless),
+            systems::update_hud_text.run_if(|config: Res<ConfigResource>| !config.0.headless),
         );
     }
 }

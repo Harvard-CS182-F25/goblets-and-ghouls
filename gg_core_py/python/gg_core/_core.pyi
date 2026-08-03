@@ -118,9 +118,19 @@ class GGConfig:
     @generation_seed.setter
     def generation_seed(self, value: typing.Optional[builtins.int]) -> None: ...
     @property
-    def episode_seed(self) -> typing.Optional[builtins.int]: ...
+    def episode_seed(self) -> typing.Optional[builtins.int]:
+        r"""
+        Optional episode seed used when constructing the initial game state.
+        This controls the first episode's RNG, but `GameState.reset()` does
+        not consult it unless a caller explicitly passes that seed back in.
+        """
     @episode_seed.setter
-    def episode_seed(self, value: typing.Optional[builtins.int]) -> None: ...
+    def episode_seed(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Optional episode seed used when constructing the initial game state.
+        This controls the first episode's RNG, but `GameState.reset()` does
+        not consult it unless a caller explicitly passes that seed back in.
+        """
     @property
     def debug(self) -> builtins.bool: ...
     @debug.setter
@@ -199,15 +209,6 @@ class GGConfig:
     def cell_size(self) -> builtins.float: ...
     @cell_size.setter
     def cell_size(self, value: builtins.float) -> None: ...
-    @property
-    def size(self) -> tuple[builtins.int, builtins.int]:
-        r"""
-        The size of the board as (width, height) — same as
-        `config.world_generation.size`, flattened for convenience. Only
-        reflects the *procedurally-generated* size; when `world_file` is
-        set, read the actual board size from `GameState.board.width/height`
-        instead.
-        """
     def __repr__(self) -> builtins.str: ...
     def __str__(self) -> builtins.str: ...
 
@@ -260,14 +261,16 @@ class GameState:
         position. A wall is visible if no other wall lies between the agent
         and that wall.
         """
+    @property
+    def episode_seed(self) -> builtins.int:
+        r"""
+        Returns the episode seed driving this state's RNG.
+        """
     def all_states(self) -> builtins.list[GameState]:
         r"""
-        Returns a list of `width * height` game states. These are states where
-        the agent's position is varied across all positions. If there is a ghost,
-        each of these states has the ghost's position fixed at its current one,
-        and this function returns an additional `width * height` game states
-        where the ghost's position is instead varied across all positions. Note
-        that invalid states are not filtered out.
+        Returns a list of `width * height` game states where the agent's
+        position is varied across all cells. Note that invalid states are not
+        filtered out.
         """
     def next_state(self, action:Action) -> GameState:
         r"""
@@ -275,21 +278,21 @@ class GameState:
         given direction. This move is deterministic, and does not update the
         ghost's position.
         """
-    def with_seed(self, seed:builtins.int) -> GameState:
-        r"""
-        Returns a copy of the current game state with a fixed episode seed,
-        used to determine the actions taken by the agent and the ghost.
-        """
     def step(self, action:Action) -> GameState:
         r"""
         Returns a new game state resulting from one full environment step.
         This step is not deterministic, and updates both the agent and the
         ghost's position using the episode seed. Fails for the Teleop ghost.
         """
-    def reset(self) -> tuple[GameState, builtins.int]:
+    def with_seed(self, seed:builtins.int) -> GameState:
+        r"""
+        Returns a copy of the current game state with a fixed episode seed,
+        used to determine the actions taken by the agent and the ghost.
+        """
+    def reset(self, seed:typing.Optional[builtins.int]=None) -> tuple[GameState, builtins.int]:
         r"""
         Returns a new game state set to the original configuration, along with
-        a fresh episode seed.
+        the episode seed it uses. When `seed` is None, a fresh seed is sampled.
         """
     def __repr__(self) -> builtins.str: ...
     def __str__(self) -> builtins.str: ...

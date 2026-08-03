@@ -2,7 +2,9 @@ use bevy::prelude::*;
 
 use crate::coords::world_dimensions;
 use crate::resources::{ConfigResource, GameStateResource, HeatmapResource};
-use crate::scene::{GroundPlane, RewardText, WALL_HEIGHT, WallBundle, WallGraphicsAssets};
+use crate::scene::{
+    EpisodeSeedText, GroundPlane, RewardText, WALL_HEIGHT, WallBundle, WallGraphicsAssets,
+};
 
 /// Spawns the upper-right HUD panel: generation seed (or the world file
 /// path, if one was supplied — a procedural seed wouldn't mean anything for
@@ -29,9 +31,7 @@ pub fn setup_key_instructions(
                 .expect("Should have generated a generation seed before spawning the HUD")
         ),
     };
-    let episode_seed = config
-        .episode_seed
-        .expect("Should have generated an episode seed before spawning the HUD");
+    let episode_seed = state.0.rng_seed;
 
     commands
         .spawn((
@@ -63,6 +63,7 @@ pub fn setup_key_instructions(
                     ..default()
                 },
                 TextLayout::new_with_justify(Justify::Right),
+                EpisodeSeedText,
             ));
             parent.spawn((
                 Text::new(format!("Reward: {}", state.0.reward)),
@@ -234,14 +235,17 @@ pub fn setup_scene(
     }
 }
 
-/// Keeps the HUD's "Reward: ..." line current — the only line in that panel
-/// that changes after Startup (seeds/world path are fixed for the session).
-pub fn update_reward_text(
+/// Keeps the HUD's episode-seed and reward lines current.
+pub fn update_hud_text(
     state: Res<GameStateResource>,
-    mut query: Query<&mut Text, With<RewardText>>,
+    mut reward_query: Query<&mut Text, (With<RewardText>, Without<EpisodeSeedText>)>,
+    mut seed_query: Query<&mut Text, (With<EpisodeSeedText>, Without<RewardText>)>,
 ) {
-    for mut text in &mut query {
+    for mut text in &mut reward_query {
         text.0 = format!("Reward: {}", state.0.reward);
+    }
+    for mut text in &mut seed_query {
+        text.0 = format!("Episode Seed: {}", state.0.rng_seed);
     }
 }
 
