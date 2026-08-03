@@ -35,6 +35,7 @@ impl Plugin for AgentPlugin {
             Update,
             (
                 systems::restart_when_done.run_if(input_just_pressed(KeyCode::Space)),
+                systems::restart_with_new_seed_when_done.run_if(input_just_pressed(KeyCode::KeyN)),
                 // render_delay_secs / the policy timer only drives stepping
                 // when the ghost isn't teleop-controlled; in Teleop mode the
                 // human's keypress is what advances the simulation instead.

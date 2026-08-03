@@ -541,12 +541,13 @@ pub fn show_game_over_overlay(
 
     let restart_hint = commands
         .spawn((
-            Text::new("Space: Restart episode"),
+            Text::new("Space: Restart episode\nN: Restart with new seed"),
             TextFont {
                 font_size: 24.0,
                 ..default()
             },
             TextColor(Color::WHITE),
+            TextLayout::new_with_justify(Justify::Center),
         ))
         .id();
 

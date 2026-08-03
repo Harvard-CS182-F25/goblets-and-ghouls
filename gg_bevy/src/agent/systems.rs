@@ -111,15 +111,50 @@ pub fn restart_when_done(
     mut paused: ResMut<SimulationPaused>,
     mut restarted: ResMut<RestartedThisFrame>,
 ) {
+    let current_seed = game_state.0.rng_seed;
+    restart_done_with_seed(
+        &mut query,
+        &mut game_state,
+        &mut timer,
+        &mut paused,
+        &mut restarted,
+        Some(current_seed),
+    );
+}
+
+pub fn restart_with_new_seed_when_done(
+    mut query: Query<(&mut Transform, Option<&Agent>, Option<&GhostAgent>)>,
+    mut game_state: ResMut<GameStateResource>,
+    mut timer: ResMut<PolicyTimer>,
+    mut paused: ResMut<SimulationPaused>,
+    mut restarted: ResMut<RestartedThisFrame>,
+) {
+    restart_done_with_seed(
+        &mut query,
+        &mut game_state,
+        &mut timer,
+        &mut paused,
+        &mut restarted,
+        None,
+    );
+}
+
+fn restart_done_with_seed(
+    query: &mut Query<(&mut Transform, Option<&Agent>, Option<&GhostAgent>)>,
+    game_state: &mut ResMut<GameStateResource>,
+    timer: &mut ResMut<PolicyTimer>,
+    paused: &mut ResMut<SimulationPaused>,
+    restarted: &mut ResMut<RestartedThisFrame>,
+    seed: Option<u64>,
+) {
     if !game_state.0.done {
         return;
     }
 
-    let current_seed = game_state.0.rng_seed;
-    let (state, _) = game_state.0.reset(Some(current_seed));
+    let (state, _) = game_state.0.reset(seed);
     game_state.0 = state;
 
-    sync_actor_transforms(&mut query, &game_state.0);
+    sync_actor_transforms(query, &game_state.0);
 
     timer.0.reset();
     paused.0 = false;
