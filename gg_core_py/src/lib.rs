@@ -43,7 +43,7 @@ fn run(
     let generation_seed = if let Some(seed) = config.generation_seed {
         seed
     } else {
-        let seed = rand::random::<u16>().into();
+        let seed = rand::random::<u32>();
         config.generation_seed = Some(seed);
         seed
     };

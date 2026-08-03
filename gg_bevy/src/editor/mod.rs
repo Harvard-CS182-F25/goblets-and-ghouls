@@ -44,19 +44,21 @@ impl EditorBoard {
 
     /// Load from a `gg_core::WorldFile` YAML world.
     pub fn from_file(path: &str) -> Result<Self, String> {
-        let world = WorldFile::from_file(path).map_err(|e| e.to_string())?;
-        let (width, height) = (world.width, world.height);
+        let board = WorldFile::from_file(path)
+            .and_then(|world| world.into_board())
+            .map_err(|e| e.to_string())?;
+        let (width, height) = (board.width, board.height);
         let mut tiles = vec![vec![EditorTile::Empty; width]; height];
 
-        for &(col, row) in &world.walls {
+        for &(col, row) in &board.wall_positions {
             tiles[row][col] = EditorTile::Wall;
         }
-        for Goblet { position, reward } in &world.goblets {
+        for Goblet { position, reward } in &board.goblets {
             tiles[position.1][position.0] = EditorTile::Goblet(*reward);
         }
-        let (ac, ar) = world.agent_position;
+        let (ac, ar) = board.agent_position;
         tiles[ar][ac] = EditorTile::Agent;
-        if let Some((gc, gr)) = world.ghost_position {
+        if let Some((gc, gr)) = board.ghost_position {
             tiles[gr][gc] = EditorTile::Ghost;
         }
 
