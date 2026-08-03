@@ -115,14 +115,15 @@ impl Board {
             .filter(|&pos| Some(pos) != ghost_position)
             .collect::<Vec<_>>();
 
-        let goblets = (0..config.goblets.number)
-            .filter_map(|_| {
-                free_positions.choose(rng).cloned().map(|position| Goblet {
-                    position,
-                    reward: rng.random_range(
-                        -(config.goblets.max_reward as i32)..=(config.goblets.max_reward as i32),
-                    ),
-                })
+        let goblets = free_positions
+            .iter()
+            .cloned()
+            .choose_multiple(rng, config.goblets.number)
+            .into_iter()
+            .map(|position| Goblet {
+                position,
+                reward: rng
+                    .random_range(-(config.goblets.max_reward as i32)..=(config.goblets.max_reward as i32)),
             })
             .collect::<Vec<_>>();
 
@@ -295,6 +296,8 @@ impl Board {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::SeedableRng;
+    use wyrand::WyRand;
 
     fn board_with(
         agent_position: (usize, usize),
@@ -343,5 +346,33 @@ mod tests {
         assert_eq!(board.effective_ghost_position_for((0, 0), true), (0, 0));
         // ...but from (0,1) the wall at (2,0) doesn't block the diagonal line.
         assert_eq!(board.effective_ghost_position_for((0, 4), true), (4, 0));
+    }
+
+    #[test]
+    fn generated_goblets_have_unique_positions() {
+        let mut rng = WyRand::from_seed(1234_u64.to_ne_bytes());
+        let config = GGConfig {
+            goblets: crate::config::GobletConfig {
+                number: 8,
+                max_reward: 10,
+            },
+            world_generation: crate::config::WorldGenerationConfig {
+                world_width: 25.0,
+                world_height: 25.0,
+                num_obstacles: 0,
+                obstacle_radius_cells: 1,
+                cell_size: 5.0,
+            },
+            ..Default::default()
+        };
+
+        let board = Board::new(&mut rng, &config);
+        let unique_positions = board
+            .goblets
+            .iter()
+            .map(|goblet| goblet.position)
+            .collect::<HashSet<_>>();
+
+        assert_eq!(unique_positions.len(), board.goblets.len());
     }
 }
