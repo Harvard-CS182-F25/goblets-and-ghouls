@@ -1,6 +1,7 @@
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use rand::{SeedableRng, seq::IndexedRandom};
+use std::collections::VecDeque;
 use wyrand::WyRand;
 
 use crate::action::Action;
@@ -71,6 +72,79 @@ impl GameState {
         self.rng_seed = other.rng_seed;
         self.config = other.config.clone();
         self.refresh_outcome()
+    }
+
+    fn ordered_actions_toward(from: (usize, usize), to: (usize, usize)) -> [Action; 4] {
+        let dx = to.0 as isize - from.0 as isize;
+        let dy = to.1 as isize - from.1 as isize;
+
+        let horizontal = if dx > 0 { Action::Right } else { Action::Left };
+        let horizontal_away = if dx > 0 { Action::Left } else { Action::Right };
+        let vertical = if dy > 0 { Action::Down } else { Action::Up };
+        let vertical_away = if dy > 0 { Action::Up } else { Action::Down };
+
+        if dx.abs() > dy.abs() {
+            [horizontal, vertical, vertical_away, horizontal_away]
+        } else {
+            [vertical, horizontal, horizontal_away, vertical_away]
+        }
+    }
+
+    fn chaser_action(board: &Board) -> Action {
+        let ghost_pos = board
+            .ghost_position
+            .expect("Ghost position should be present");
+        let agent_pos = board.agent_position;
+        let width = board.width;
+        let height = board.height;
+
+        let mut queue = VecDeque::from([ghost_pos]);
+        let mut visited = vec![false; width * height];
+        let mut first_action = vec![None; width * height];
+        visited[ghost_pos.1 * width + ghost_pos.0] = true;
+
+        while let Some(position) = queue.pop_front() {
+            for action in Self::ordered_actions_toward(position, agent_pos) {
+                let (dx, dy) = match action {
+                    Action::Up => (0, -1),
+                    Action::Right => (1, 0),
+                    Action::Down => (0, 1),
+                    Action::Left => (-1, 0),
+                };
+
+                let next = (
+                    position.0.saturating_add_signed(dx).clamp(0, width - 1),
+                    position.1.saturating_add_signed(dy).clamp(0, height - 1),
+                );
+
+                if next == position || board.wall_positions.contains(&next) {
+                    continue;
+                }
+
+                let next_idx = next.1 * width + next.0;
+                if visited[next_idx] {
+                    continue;
+                }
+
+                visited[next_idx] = true;
+                first_action[next_idx] =
+                    Some(first_action[position.1 * width + position.0].unwrap_or(action));
+
+                if next == agent_pos {
+                    return first_action[next_idx].expect("The first action should be set");
+                }
+
+                queue.push_back(next);
+            }
+        }
+
+        Self::ordered_actions_toward(ghost_pos, agent_pos)
+            .into_iter()
+            .find(|action| {
+                let moved = board.transition_det(*action, Agent::Ghost);
+                moved.ghost_position != board.ghost_position
+            })
+            .unwrap_or(Action::Up)
     }
 }
 
@@ -258,22 +332,7 @@ impl GameState {
                     .expect("Should have at least one action")
             }
             Some(GhostPolicy::Chaser) => {
-                let ghost_pos = self
-                    .board
-                    .ghost_position
-                    .expect("Ghost position should be present");
-                let agent_pos = self.board.agent_position;
-
-                let dx = agent_pos.0 as isize - ghost_pos.0 as isize;
-                let dy = agent_pos.1 as isize - ghost_pos.1 as isize;
-
-                if dx.abs() > dy.abs() {
-                    if dx > 0 { Action::Right } else { Action::Left }
-                } else if dy > 0 {
-                    Action::Down
-                } else {
-                    Action::Up
-                }
+                Self::chaser_action(&self.board)
             }
             Some(GhostPolicy::Teleop) => panic!(
                 "GhostPolicy::Teleop requires GameState::step_teleop() — the ghost's move must be supplied externally, so step()/next_state()/transition() cannot be used with this ghost policy"
@@ -515,5 +574,31 @@ mod tests {
         assert_eq!(states.len(), 6);
         assert!(states.iter().all(|s| s.board.ghost_position == Some((4, 4))));
         assert!(states.iter().all(|s| s.rng_seed == 1234));
+    }
+
+    #[test]
+    fn chaser_routes_around_blocking_wall() {
+        let board = Board {
+            agent_position: (0, 0),
+            ghost_position: Some((2, 0)),
+            goblets: Vec::new(),
+            wall_positions: HashSet::from([(1, 0)]),
+            width: 3,
+            height: 3,
+        };
+        let config = GGConfig {
+            agent: AgentConfig {
+                ghost_policy: Some(GhostPolicy::Chaser),
+                transition: [1.0, 0.0, 0.0, 0.0],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let mut state = GameState::from(board).with_config(&config);
+        let next = state.transition(Action::Up);
+
+        assert_eq!(next.board.agent_position, (0, 0));
+        assert_eq!(next.board.ghost_position, Some((2, 1)));
     }
 }
