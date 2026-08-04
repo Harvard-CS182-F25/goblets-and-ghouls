@@ -14,16 +14,22 @@ class AgentConfig:
         r"""
         Returns the name of the agent.
         """
+    @name.setter
+    def name(self, value: builtins.str) -> None: ...
     @property
     def ghost_policy(self) -> typing.Optional[GhostPolicy]:
         r"""
         Returns the ghost's policy, if there is one.
         """
+    @ghost_policy.setter
+    def ghost_policy(self, value: typing.Optional[GhostPolicy]) -> None: ...
     @property
     def ghost_penalty(self) -> builtins.int:
         r"""
         Returns the reward applied when the ghost catches the agent.
         """
+    @ghost_penalty.setter
+    def ghost_penalty(self, value: builtins.int) -> None: ...
     @property
     def ghost_occlusion(self) -> builtins.bool:
         r"""
@@ -32,12 +38,18 @@ class AgentConfig:
         to false. Invalid or hypothetical states where the ghost is inside a
         wall are also treated as hidden.
         """
+    @ghost_occlusion.setter
+    def ghost_occlusion(self, value: builtins.bool) -> None: ...
     @property
     def transition(self) -> builtins.list[builtins.float]:
         r"""
         Returns the probabilities that the agent's actual action are
         [intended, right, back, left]. Entries must be nonnegative and sum to 1.
         """
+    @transition.setter
+    def transition(self, value: builtins.list[builtins.float]) -> None: ...
+    def __repr__(self) -> builtins.str: ...
+    def __str__(self) -> builtins.str: ...
 
 class Board:
     r"""
@@ -61,6 +73,10 @@ class Board:
 class CameraConfig:
     @property
     def scale(self) -> builtins.float: ...
+    @scale.setter
+    def scale(self, value: builtins.float) -> None: ...
+    def __repr__(self) -> builtins.str: ...
+    def __str__(self) -> builtins.str: ...
 
 class EntityType:
     class Empty(EntityType):
@@ -315,11 +331,17 @@ class GobletConfig:
         r"""
         Returns the initial number of goblets.
         """
+    @number.setter
+    def number(self, value: builtins.int) -> None: ...
     @property
     def max_reward(self) -> builtins.int:
         r"""
         Returns the maximum reward of any goblet.
         """
+    @max_reward.setter
+    def max_reward(self, value: builtins.int) -> None: ...
+    def __repr__(self) -> builtins.str: ...
+    def __str__(self) -> builtins.str: ...
 
 class WorldGenerationConfig:
     r"""
@@ -327,20 +349,30 @@ class WorldGenerationConfig:
     """
     @property
     def world_width(self) -> builtins.float: ...
+    @world_width.setter
+    def world_width(self, value: builtins.float) -> None: ...
     @property
     def world_height(self) -> builtins.float: ...
+    @world_height.setter
+    def world_height(self, value: builtins.float) -> None: ...
     @property
     def num_obstacles(self) -> builtins.int:
         r"""
         Returns the initial number of obstacles.
         """
+    @num_obstacles.setter
+    def num_obstacles(self, value: builtins.int) -> None: ...
     @property
     def obstacle_radius_cells(self) -> builtins.int:
         r"""
         Returns the maximum radius of an obstacle in number of cells.
         """
+    @obstacle_radius_cells.setter
+    def obstacle_radius_cells(self, value: builtins.int) -> None: ...
     @property
     def cell_size(self) -> builtins.float: ...
+    @cell_size.setter
+    def cell_size(self, value: builtins.float) -> None: ...
     @property
     def size(self) -> tuple[builtins.int, builtins.int]:
         r"""

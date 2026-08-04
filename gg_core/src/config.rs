@@ -25,35 +25,81 @@ pub enum GhostPolicy {
 #[serde(default)]
 /// Stores the configuration of the agent and the ghost, if there is one.
 pub struct AgentConfig {
-    /// Returns the name of the agent.
-    #[pyo3(get)]
     #[derivative(Default(value = "\"Agent\".to_string()"))]
     pub name: String,
 
-    /// Returns the ghost's policy, if there is one.
-    #[pyo3(get)]
     pub ghost_policy: Option<GhostPolicy>,
 
-    /// Returns the reward applied when the ghost catches the agent.
-    #[pyo3(get)]
     #[derivative(Default(value = "-100"))]
     pub ghost_penalty: i32,
+
+    pub ghost_occlusion: bool,
+
+    pub transition: [f32; 4],
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl AgentConfig {
+    /// Returns the name of the agent.
+    #[getter]
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    #[setter]
+    fn set_name(&mut self, value: String) {
+        self.name = value;
+    }
+
+    /// Returns the ghost's policy, if there is one.
+    #[getter]
+    fn ghost_policy(&self) -> Option<GhostPolicy> {
+        self.ghost_policy.clone()
+    }
+
+    #[setter]
+    fn set_ghost_policy(&mut self, value: Option<GhostPolicy>) {
+        self.ghost_policy = value;
+    }
+
+    /// Returns the reward applied when the ghost catches the agent.
+    #[getter]
+    fn ghost_penalty(&self) -> i32 {
+        self.ghost_penalty
+    }
+
+    #[setter]
+    fn set_ghost_penalty(&mut self, value: i32) {
+        self.ghost_penalty = value;
+    }
 
     /// When true, a ghost hidden behind a wall (i.e., with no line of sight
     /// from the agent) is not observed for policy look-up purposes. Defaults
     /// to false. Invalid or hypothetical states where the ghost is inside a
     /// wall are also treated as hidden.
-    #[pyo3(get)]
-    pub ghost_occlusion: bool,
+    #[getter]
+    fn ghost_occlusion(&self) -> bool {
+        self.ghost_occlusion
+    }
+
+    #[setter]
+    fn set_ghost_occlusion(&mut self, value: bool) {
+        self.ghost_occlusion = value;
+    }
 
     /// Returns the probabilities that the agent's actual action are
     /// [intended, right, back, left]. Entries must be nonnegative and sum to 1.
-    #[pyo3(get)]
-    pub transition: [f32; 4],
-}
+    #[getter]
+    fn transition(&self) -> [f32; 4] {
+        self.transition
+    }
 
-#[pymethods]
-impl AgentConfig {
+    #[setter]
+    fn set_transition(&mut self, value: [f32; 4]) {
+        self.transition = value;
+    }
+
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("AgentConfig({})", self.__str__()?))
     }
@@ -74,13 +120,23 @@ impl AgentConfig {
 #[derivative(Default)]
 #[serde(default)]
 pub struct CameraConfig {
-    #[pyo3(get)]
     #[derivative(Default(value = "-0.15"))]
     pub scale: f32,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl CameraConfig {
+    #[getter]
+    fn scale(&self) -> f32 {
+        self.scale
+    }
+
+    #[setter]
+    fn set_scale(&mut self, value: f32) {
+        self.scale = value;
+    }
+
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("CameraConfig({})", self.__str__()?))
     }
@@ -102,19 +158,38 @@ impl CameraConfig {
 #[serde(default)]
 /// Stores the configuration of all goblets.
 pub struct GobletConfig {
-    /// Returns the initial number of goblets.
-    #[pyo3(get)]
     #[derivative(Default(value = "1"))]
     pub number: usize,
 
-    /// Returns the maximum reward of any goblet.
-    #[pyo3(get)]
     #[derivative(Default(value = "10"))]
     pub max_reward: u32,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl GobletConfig {
+    /// Returns the initial number of goblets.
+    #[getter]
+    fn number(&self) -> usize {
+        self.number
+    }
+
+    #[setter]
+    fn set_number(&mut self, value: usize) {
+        self.number = value;
+    }
+
+    /// Returns the maximum reward of any goblet.
+    #[getter]
+    fn max_reward(&self) -> u32 {
+        self.max_reward
+    }
+
+    #[setter]
+    fn set_max_reward(&mut self, value: u32) {
+        self.max_reward = value;
+    }
+
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("GobletConfig({})", self.__str__()?))
     }
@@ -136,21 +211,14 @@ impl GobletConfig {
 #[serde(default)]
 /// Stores the configuration of the gridworld.
 pub struct WorldGenerationConfig {
-    #[pyo3(get)]
     #[derivative(Default(value = "100.0"))]
     pub world_width: f32,
-    #[pyo3(get)]
     #[derivative(Default(value = "100.0"))]
     pub world_height: f32,
-    /// Returns the initial number of obstacles.
-    #[pyo3(get)]
     #[derivative(Default(value = "5"))]
     pub num_obstacles: usize,
-    /// Returns the maximum radius of an obstacle in number of cells.
-    #[pyo3(get)]
     #[derivative(Default(value = "3"))]
     pub obstacle_radius_cells: usize,
-    #[pyo3(get)]
     #[derivative(Default(value = "5.0"))]
     pub cell_size: f32,
 }
@@ -158,6 +226,58 @@ pub struct WorldGenerationConfig {
 #[gen_stub_pymethods]
 #[pymethods]
 impl WorldGenerationConfig {
+    #[getter]
+    fn world_width(&self) -> f32 {
+        self.world_width
+    }
+
+    #[setter]
+    fn set_world_width(&mut self, value: f32) {
+        self.world_width = value;
+    }
+
+    #[getter]
+    fn world_height(&self) -> f32 {
+        self.world_height
+    }
+
+    #[setter]
+    fn set_world_height(&mut self, value: f32) {
+        self.world_height = value;
+    }
+
+    /// Returns the initial number of obstacles.
+    #[getter]
+    fn num_obstacles(&self) -> usize {
+        self.num_obstacles
+    }
+
+    #[setter]
+    fn set_num_obstacles(&mut self, value: usize) {
+        self.num_obstacles = value;
+    }
+
+    /// Returns the maximum radius of an obstacle in number of cells.
+    #[getter]
+    fn obstacle_radius_cells(&self) -> usize {
+        self.obstacle_radius_cells
+    }
+
+    #[setter]
+    fn set_obstacle_radius_cells(&mut self, value: usize) {
+        self.obstacle_radius_cells = value;
+    }
+
+    #[getter]
+    fn cell_size(&self) -> f32 {
+        self.cell_size
+    }
+
+    #[setter]
+    fn set_cell_size(&mut self, value: f32) {
+        self.cell_size = value;
+    }
+
     /// Returns the size of the world as a (width, height) tuple.
     #[getter]
     fn size(&self) -> (usize, usize) {
