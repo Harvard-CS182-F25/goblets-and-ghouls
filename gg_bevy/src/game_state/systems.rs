@@ -376,7 +376,7 @@ fn value_to_color(value: f32, min: f32, max: f32) -> Color {
     let (r1, g1, b1) = VIRIDIS[idx.min(VIRIDIS.len() - 2) + 1];
     let lerp = |a: f32, b: f32| a + (b - a) * frac;
 
-    Color::srgba(lerp(r0, r1), lerp(g0, g1), lerp(b0, b1), 0.55)
+    Color::srgba(lerp(r0, r1), lerp(g0, g1), lerp(b0, b1), 0.4)
 }
 
 pub fn update_heatmap(
