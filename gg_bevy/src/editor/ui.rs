@@ -290,7 +290,7 @@ pub fn setup_ui(mut commands: Commands) {
                         align_items: AlignItems::Center,
                         ..Default::default()
                     },
-                    BackgroundColor(Color::srgb(0.12, 0.12, 0.15)),
+                    BackgroundColor(Color::srgb(0.12, 0.12, 0.16)),
                 ))
                 .with_children(|dialog| {
                     dialog.spawn((
@@ -455,9 +455,9 @@ pub fn sync_ui(
         };
         *t = Text::new(display);
         *bg = BackgroundColor(if state.filename_editing {
-            Color::srgb(0.25, 0.25, 0.30)
+            Color::srgb(0.28, 0.3, 0.35)
         } else {
-            Color::srgb(0.15, 0.15, 0.18)
+            Color::srgb(0.18, 0.2, 0.25)
         });
     }
 
