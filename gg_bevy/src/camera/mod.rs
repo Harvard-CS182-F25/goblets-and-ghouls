@@ -11,6 +11,9 @@ pub use systems::*;
 /// it scales with the world rather than being a fixed absolute margin.
 pub const PAN_PADDING_CELLS: f32 = 2.0;
 
+const MIN_SCALE: f32 = 0.05;
+const MAX_SCALE: f32 = 10.0;
+
 /// Tracks the cursor position from the previous frame while a Shift+Left-
 /// click drag is in progress, so panning systems can compute a per-frame
 /// screen-space delta. `None` whenever a drag isn't currently active.
@@ -82,6 +85,7 @@ impl Plugin for CameraPlugin {
                 systems::zoom_in.run_if(input_pressed(KeyCode::Equal)),
                 systems::zoom_out.run_if(input_pressed(KeyCode::Minus)),
                 systems::pan_camera,
+                systems::update_pan_cursor,
             ),
         );
     }

@@ -187,7 +187,7 @@ impl Default for EditorState {
         Self {
             current_tool: EditorTile::Wall,
             current_goblet_reward: 1,
-            show_grid: false,
+            show_grid: true,
             out_path: None,
             load_path: None,
             message: None,
@@ -299,6 +299,7 @@ impl Plugin for EditorPlugin {
                 zoom_in.run_if(input_pressed(KeyCode::Equal)),
                 zoom_out.run_if(input_pressed(KeyCode::Minus)),
                 input::pan_camera,
+                crate::camera::update_pan_cursor,
             ),
         );
         app.add_systems(

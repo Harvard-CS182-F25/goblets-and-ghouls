@@ -1,7 +1,7 @@
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
+use bevy::window::{CursorIcon, PrimaryWindow, SystemCursorIcon};
 
-use crate::camera::{PanState, drag_delta, pan_and_clamp, shift_held};
+use crate::camera::{MAX_SCALE, MIN_SCALE, PanState, drag_delta, pan_and_clamp, shift_held};
 use crate::coords::world_dimensions;
 use crate::resources::{ConfigResource, GameStateResource};
 
@@ -25,7 +25,7 @@ pub fn setup_camera(mut commands: Commands, config: Res<ConfigResource>) {
 pub fn zoom_in(mut query: Query<&mut Projection, With<Camera3d>>) {
     for mut proj in query.iter_mut() {
         if let Projection::Orthographic(ortho) = &mut *proj {
-            ortho.scale += 0.001;
+            ortho.scale = ortho.scale.signum() * (ortho.scale.abs() * 0.97).max(MIN_SCALE);
         }
     }
 }
@@ -33,7 +33,43 @@ pub fn zoom_in(mut query: Query<&mut Projection, With<Camera3d>>) {
 pub fn zoom_out(mut query: Query<&mut Projection, With<Camera3d>>) {
     for mut proj in query.iter_mut() {
         if let Projection::Orthographic(ortho) = &mut *proj {
-            ortho.scale -= 0.001;
+            ortho.scale = ortho.scale.signum() * (ortho.scale.abs() / 0.97).min(MAX_SCALE);
+        }
+    }
+}
+
+/// Swaps the OS cursor to an open/closed hand while Shift (the pan modifier)
+/// is held. The editor's blocking exit dialog disables this affordance because
+/// panning is unavailable there.
+pub fn update_pan_cursor(
+    mut commands: Commands,
+    keys: Res<ButtonInput<KeyCode>>,
+    mouse_btn: Res<ButtonInput<MouseButton>>,
+    window_q: Query<Entity, With<PrimaryWindow>>,
+    editor_state: Option<Res<crate::editor::EditorState>>,
+    mut current: Local<Option<SystemCursorIcon>>,
+) {
+    let Ok(window) = window_q.single() else {
+        return;
+    };
+    let pan_available = editor_state.is_none_or(|state| !state.exit_dialog_open);
+    let desired = (pan_available && shift_held(&keys)).then(|| {
+        if mouse_btn.pressed(MouseButton::Left) {
+            SystemCursorIcon::Grabbing
+        } else {
+            SystemCursorIcon::Grab
+        }
+    });
+    if desired == *current {
+        return;
+    }
+    *current = desired;
+    match desired {
+        Some(icon) => {
+            commands.entity(window).insert(CursorIcon::System(icon));
+        }
+        None => {
+            commands.entity(window).remove::<CursorIcon>();
         }
     }
 }

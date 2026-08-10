@@ -8,8 +8,10 @@ use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, GOBLET_HEIGHT, WALL_HEIGHT, Groun
 
 use super::{CELL_SIZE, PANEL_WIDTH, EditorBoard, EditorState, EditorTile};
 
-const GRID_LINE_WIDTH: f32 = 0.15;
+const GRID_LINE_WIDTH: f32 = 0.2;
 const GRID_LINE_HEIGHT: f32 = 0.02;
+/// Hide grid lines once individual cells are too small.
+const MIN_GRID_CELL_SIZE_PX: f32 = 20.0;
 
 /// Marker: the tile entity at board position `(row, col)`.
 #[derive(Component)]
@@ -91,7 +93,7 @@ pub fn setup_grid(
     let half_h = world_height / 2.0;
     let y = WALL_HEIGHT + GHOST_HEIGHT + GRID_LINE_HEIGHT / 2.0;
     let material = materials.add(StandardMaterial {
-        base_color: Color::srgba(1.0, 1.0, 1.0, 0.4),
+        base_color: Color::srgba(0.0, 0.0, 0.0, 0.5),
         alpha_mode: AlphaMode::Blend,
         unlit: true,
         ..default()
@@ -333,12 +335,19 @@ pub fn update_goblet_label_positions(
     }
 }
 
-/// Shows or hides the persistent grid overlay.
+/// The grid is visible while manually enabled, and auto-hides only once a
+/// cell occupies fewer than [`MIN_GRID_CELL_SIZE_PX`] logical screen pixels.
 pub fn sync_grid_visibility(
     state: Res<EditorState>,
+    camera_q: Query<&Projection, With<Camera3d>>,
     mut grid_lines: Query<&mut Visibility, With<GridLine>>,
 ) {
-    let visibility = if state.show_grid {
+    let Ok(Projection::Orthographic(ortho)) = camera_q.single() else {
+        return;
+    };
+    let cell_screen_size = CELL_SIZE / ortho.scale.abs();
+    let visible = state.show_grid && cell_screen_size >= MIN_GRID_CELL_SIZE_PX;
+    let visibility = if visible {
         Visibility::Visible
     } else {
         Visibility::Hidden
