@@ -68,6 +68,7 @@ pub fn build_editor_app(
             title: "Goblets and Ghouls World Editor".to_string(),
             ..Default::default()
         }),
+        close_when_requested: false,
         ..Default::default()
     }));
     app.add_systems(Update, force_focus);

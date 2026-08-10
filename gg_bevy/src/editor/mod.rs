@@ -277,6 +277,7 @@ impl Plugin for EditorPlugin {
             Update,
             (
                 input::handle_keyboard,
+                input::handle_close_request,
                 input::handle_text_input,
                 input::handle_filename_click,
                 input::handle_mouse,

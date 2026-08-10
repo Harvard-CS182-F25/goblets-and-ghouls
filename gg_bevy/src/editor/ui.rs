@@ -298,10 +298,18 @@ pub fn setup_ui(mut commands: Commands) {
                     dialog.spawn((
                         Text::new("You have unsaved changes."),
                         TextFont {
-                            font_size: 16.0,
+                            font_size: 20.0,
                             ..Default::default()
                         },
                         TextColor(Color::WHITE),
+                    ));
+                    dialog.spawn((
+                        Text::new("Save before exiting?"),
+                        TextFont {
+                            font_size: 13.0,
+                            ..Default::default()
+                        },
+                        TextColor(Color::srgb(0.75, 0.75, 0.75)),
                     ));
                     dialog
                         .spawn(Node {
@@ -310,10 +318,10 @@ pub fn setup_ui(mut commands: Commands) {
                             ..Default::default()
                         })
                         .with_children(|row| {
-                            for (label, kind) in [
-                                ("Save & Exit", ExitDialogButton::Save),
-                                ("Discard & Exit", ExitDialogButton::Discard),
-                                ("Cancel", ExitDialogButton::Cancel),
+                            for (label, kind, color) in [
+                                ("Save", ExitDialogButton::Save, Color::srgb(0.302, 0.784, 0.376)),
+                                ("Discard", ExitDialogButton::Discard, Color::srgb(0.863, 0.275, 0.275)),
+                                ("Cancel", ExitDialogButton::Cancel, Color::srgb(0.4, 0.4, 0.45)),
                             ] {
                                 row.spawn((
                                     Button,
@@ -322,7 +330,7 @@ pub fn setup_ui(mut commands: Commands) {
                                         padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
                                         ..Default::default()
                                     },
-                                    BackgroundColor(Color::srgb(0.25, 0.25, 0.3)),
+                                    BackgroundColor(color.with_alpha(0.5)),
                                     kind,
                                 ))
                                 .with_children(|btn| {

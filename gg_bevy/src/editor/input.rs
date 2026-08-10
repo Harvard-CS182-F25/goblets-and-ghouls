@@ -2,6 +2,7 @@ use bevy::input::ButtonState;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
+use bevy::window::WindowCloseRequested;
 
 use crate::camera::{PAN_PADDING_CELLS, PanState, drag_delta, pan_and_clamp, shift_held};
 use crate::coords::raycast_to_grid_cell;
@@ -68,6 +69,29 @@ pub fn handle_keyboard(
     }
     if keys.just_pressed(KeyCode::KeyS) {
         save_board(&board, &mut state);
+    }
+}
+
+/// Handles the operating system's window-close request the same way as
+/// Escape: dirty boards require confirmation, while clean boards exit.
+pub fn handle_close_request(
+    mut requests: MessageReader<WindowCloseRequested>,
+    mut state: ResMut<EditorState>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    if requests.is_empty() {
+        return;
+    }
+    requests.clear();
+
+    if state.exit_dialog_open {
+        return;
+    }
+
+    if state.dirty {
+        state.exit_dialog_open = true;
+    } else {
+        exit.write(AppExit::Success);
     }
 }
 
