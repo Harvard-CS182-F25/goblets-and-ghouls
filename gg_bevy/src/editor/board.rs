@@ -6,7 +6,7 @@ use crate::coords::{cell_to_world, world_dimensions};
 use crate::goblet::GobletGraphicsAssets;
 use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, GOBLET_HEIGHT, WALL_HEIGHT, GroundPlane, WallGraphicsAssets};
 
-use super::{CELL_SIZE, EditorBoard, EditorState, EditorTile};
+use super::{CELL_SIZE, PANEL_WIDTH, EditorBoard, EditorState, EditorTile};
 
 const GRID_LINE_WIDTH: f32 = 0.15;
 const GRID_LINE_HEIGHT: f32 = 0.02;
@@ -36,6 +36,7 @@ pub fn setup_scene(
     board: Res<EditorBoard>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    windows: Query<&Window>,
 ) {
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
@@ -44,16 +45,27 @@ pub fn setup_scene(
     });
     commands.insert_resource(ClearColor(Color::srgb_u8(0, 136, 255)));
 
+    let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
+    let (scale, x_offset) = windows
+        .single()
+        .map(|window| {
+            let visible_width = (window.width() - PANEL_WIDTH).max(1.0);
+            let scale = (world_width * 1.15 / visible_width)
+                .max(world_height * 1.15 / window.height());
+            (-scale, scale * PANEL_WIDTH / 2.0)
+        })
+        .unwrap_or((-0.15, 0.0));
+
     commands.spawn((
         Camera3d::default(),
-        Transform::from_translation(Vec3::new(0.0, 10.0, 0.0)).looking_at(Vec3::ZERO, Vec3::NEG_Z),
+        Transform::from_translation(Vec3::new(x_offset, 10.0, 0.0))
+            .looking_at(Vec3::new(x_offset, 0.0, 0.0), Vec3::NEG_Z),
         Projection::from(OrthographicProjection {
-            scale: -0.15,
+            scale,
             ..OrthographicProjection::default_3d()
         }),
     ));
 
-    let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
     let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let material = materials.add(Color::srgb_u8(0, 140, 0));
 

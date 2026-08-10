@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{EditorBoard, EditorState, EditorTile};
+use super::{EditorBoard, EditorState, EditorTile, PANEL_WIDTH};
 
 /// Marker: the tool-button background node for `tile`.
 #[derive(Component)]
@@ -37,8 +37,6 @@ pub enum ExitDialogButton {
     Discard,
     Cancel,
 }
-
-const PANEL_WIDTH: f32 = 240.0;
 
 fn tool_color(tile: EditorTile) -> Color {
     match tile {

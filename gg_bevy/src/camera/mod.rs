@@ -21,7 +21,9 @@ pub struct PanState {
 
 /// Moves `translation` by `direction` (unit vector in the X/Z ground plane)
 /// and clamps the result so the board never scrolls more than `padding`
-/// world units past the viewport edge, at the camera's current zoom.
+/// world units past the viewport edge, at the camera's current zoom. `center`
+/// is the camera's resting position, which offsets the editor board left of
+/// its right-side panel.
 ///
 /// Pure, resource-free helper shared by the live game's camera (which reads
 /// board size from `GameStateResource`/`ConfigResource`) and the world
@@ -35,6 +37,7 @@ pub fn pan_and_clamp(
     window_size: Vec2,
     board_size: Vec2,
     padding: f32,
+    center: Vec2,
 ) {
     *translation += direction;
 
@@ -42,8 +45,8 @@ pub fn pan_and_clamp(
     let half_board = board_size / 2.0;
     let max = (half_board - half_view + Vec2::splat(padding)).max(Vec2::ZERO);
 
-    translation.x = translation.x.clamp(-max.x, max.x);
-    translation.z = translation.z.clamp(-max.y, max.y);
+    translation.x = translation.x.clamp(center.x - max.x, center.x + max.x);
+    translation.z = translation.z.clamp(center.y - max.y, center.y + max.y);
 }
 
 /// Whether either Shift key is currently held.

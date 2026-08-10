@@ -9,7 +9,7 @@ use crate::coords::raycast_to_grid_cell;
 use crate::scene::GroundPlane;
 
 use super::ui::{ExitDialogButton, FilenameInputBox};
-use super::{CELL_SIZE, EditorBoard, EditorState, EditorTile, save_board};
+use super::{CELL_SIZE, PANEL_WIDTH, EditorBoard, EditorState, EditorTile, save_board};
 
 pub fn handle_keyboard(
     keys: Res<ButtonInput<KeyCode>>,
@@ -133,6 +133,10 @@ pub fn handle_text_input(
     mut key_events: MessageReader<KeyboardInput>,
     mut state: ResMut<EditorState>,
 ) {
+    if state.exit_dialog_open {
+        return;
+    }
+
     for event in key_events.read() {
         if event.state != ButtonState::Pressed {
             continue;
@@ -187,6 +191,7 @@ pub fn handle_filename_click(
 
 pub fn handle_mouse(
     mouse_btn: Res<ButtonInput<MouseButton>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera_q: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     plane_q: Query<&GlobalTransform, With<GroundPlane>>,
@@ -196,6 +201,9 @@ pub fn handle_mouse(
     // Don't let clicks through the modal exit-confirmation overlay paint the
     // board underneath it.
     if state.exit_dialog_open {
+        return;
+    }
+    if shift_held(&keyboard_input) {
         return;
     }
 
@@ -215,9 +223,9 @@ pub fn handle_mouse(
         return;
     };
 
-    // Skip clicks that land on the right-side UI panel (220 px wide).
+    // Skip clicks that land on the right-side UI panel.
     if let Some(cursor) = window.cursor_position()
-        && cursor.x > window.width() - 220.0
+        && cursor.x > window.width() - PANEL_WIDTH
     {
         return;
     }
@@ -253,8 +261,13 @@ pub fn pan_camera(
     mouse_button: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     board: Res<EditorBoard>,
+    state: Res<EditorState>,
     mut pan_state: ResMut<PanState>,
 ) {
+    if state.exit_dialog_open {
+        return;
+    }
+
     let Ok(window) = windows.single() else {
         return;
     };
@@ -263,7 +276,7 @@ pub fn pan_camera(
     let delta = drag_delta(&mut pan_state, dragging, window.cursor_position());
 
     let board_size = Vec2::new(board.width as f32 * CELL_SIZE, board.height as f32 * CELL_SIZE);
-    let window_size = Vec2::new(window.width(), window.height());
+    let window_size = Vec2::new((window.width() - PANEL_WIDTH).max(1.0), window.height());
     let padding = CELL_SIZE * PAN_PADDING_CELLS;
 
     for (mut transform, projection) in query.iter_mut() {
@@ -281,6 +294,7 @@ pub fn pan_camera(
             window_size,
             board_size,
             padding,
+            Vec2::new(ortho.scale.abs() * PANEL_WIDTH / 2.0, 0.0),
         );
     }
 }

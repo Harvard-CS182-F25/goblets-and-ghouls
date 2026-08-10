@@ -82,6 +82,7 @@ pub fn pan_camera(
             window_size,
             board_size,
             padding,
+            Vec2::ZERO,
         );
     }
 }

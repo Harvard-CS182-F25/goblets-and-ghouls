@@ -12,6 +12,9 @@ use crate::camera::{zoom_in, zoom_out};
 /// isn't tied to a `GGConfig`, unlike the live game).
 pub const CELL_SIZE: f32 = 5.0;
 
+/// Width of the right-side tool panel, shared by the UI, camera, and input.
+pub const PANEL_WIDTH: f32 = 240.0;
+
 // ─── Tile type ────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
