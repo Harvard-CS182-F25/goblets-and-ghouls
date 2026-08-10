@@ -392,7 +392,11 @@ pub fn update_heatmap(
         &mut Visibility,
     )>,
 ) {
+    let refresh_hidden = visualize_value.is_changed() || heatmap.is_changed();
     let Some(grid) = &heatmap.0 else {
+        if !refresh_hidden {
+            return;
+        }
         for (_, _, mut visibility) in &mut query {
             *visibility = Visibility::Hidden;
         }
@@ -400,9 +404,20 @@ pub fn update_heatmap(
     };
 
     if !visualize_value.0 {
+        if !refresh_hidden {
+            return;
+        }
         for (_, _, mut visibility) in &mut query {
             *visibility = Visibility::Hidden;
         }
+        return;
+    }
+
+    if !visualize_value.is_changed()
+        && !heatmap.is_changed()
+        && !range.is_changed()
+        && !game_state.is_changed()
+    {
         return;
     }
 
@@ -445,6 +460,12 @@ pub fn spawn_visibility_tiles(
     let (world_width, world_height) = world_dimensions(board.width, board.height, cell_size);
 
     let mesh = meshes.add(Cuboid::new(cell_size * 0.95, 0.05, cell_size * 0.95));
+    let material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.0, 0.0, 0.0, 0.55),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    });
 
     for col in 0..board.width {
         for row in 0..board.height {
@@ -455,17 +476,10 @@ pub fn spawn_visibility_tiles(
                 0.6
             };
 
-            let material = materials.add(StandardMaterial {
-                base_color: Color::srgba(0.0, 0.0, 0.0, 0.55),
-                alpha_mode: AlphaMode::Blend,
-                unlit: true,
-                ..default()
-            });
-
             commands.spawn((
                 VisibilityTile((col, row)),
                 Mesh3d(mesh.clone()),
-                MeshMaterial3d(material),
+                MeshMaterial3d(material.clone()),
                 Transform::from_translation(position),
                 Visibility::Hidden,
             ));
@@ -482,9 +496,16 @@ pub fn update_visibility_overlay(
     mut query: Query<(&VisibilityTile, &mut Visibility)>,
 ) {
     if !visualize_visibility.0 {
+        if !visualize_visibility.is_changed() {
+            return;
+        }
         for (_, mut visibility) in &mut query {
             *visibility = Visibility::Hidden;
         }
+        return;
+    }
+
+    if !visualize_visibility.is_changed() && !game_state.is_changed() {
         return;
     }
 
@@ -563,7 +584,7 @@ pub fn show_game_over_overlay(
                 justify_content: JustifyContent::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.65)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.75)),
             GlobalZIndex(10),
             GameOverOverlay,
         ))

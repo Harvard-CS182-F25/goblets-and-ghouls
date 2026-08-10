@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::coords::world_dimensions;
 use crate::resources::{ConfigResource, GameStateResource, HeatmapResource};
 use crate::scene::{
-    EpisodeSeedText, GroundPlane, RewardText, WALL_HEIGHT, WallBundle, WallGraphicsAssets,
+    EpisodeSeedText, GroundPlane, RenderMeshAssets, RewardText, WallBundle, WallGraphicsAssets,
 };
 
 /// Spawns the upper-right HUD panel: generation seed (or the world file
@@ -254,7 +254,7 @@ pub fn update_hud_text(
 /// `build_app` is called, whether procedurally or from a loaded world file).
 pub fn spawn_walls(
     mut commands: Commands,
-    mut meshes: Option<ResMut<Assets<Mesh>>>,
+    meshes: Option<Res<RenderMeshAssets>>,
     graphics: Option<Res<WallGraphicsAssets>>,
     config: Res<ConfigResource>,
     state: Res<GameStateResource>,
@@ -274,10 +274,11 @@ pub fn spawn_walls(
 
             let mut entity = commands.spawn(WallBundle::new(p0.into(), p0.into()));
 
-            if let (Some(meshes), Some(graphics)) = (&mut meshes, &graphics) {
-                // Square footprint the size of a cell; height = WALL_HEIGHT
-                let mesh = meshes.add(Cuboid::new(cell, WALL_HEIGHT, cell));
-                entity.insert((Mesh3d(mesh), MeshMaterial3d(graphics.material.clone())));
+            if let (Some(meshes), Some(graphics)) = (&meshes, &graphics) {
+                entity.insert((
+                    Mesh3d(meshes.wall.clone()),
+                    MeshMaterial3d(graphics.material.clone()),
+                ));
             }
         }
     }

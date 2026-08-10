@@ -24,13 +24,28 @@ pub struct EditorTileEntity {
 #[derive(Component)]
 pub struct GridLine;
 
+/// Meshes shared by all editor tiles of the same kind.
+#[derive(Resource)]
+pub(crate) struct EditorMeshAssets {
+    wall: Handle<Mesh>,
+    agent: Handle<Mesh>,
+    ghost: Handle<Mesh>,
+    goblet: Handle<Mesh>,
+}
+
 /// Must run in `PreStartup` — `setup_tiles` (in `Startup`) needs these
 /// resources to already exist, and `Commands`-queued inserts aren't applied
 /// until the end of the schedule they're queued in.
-pub fn init_visual_assets(mut commands: Commands) {
+pub fn init_visual_assets(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     commands.init_resource::<WallGraphicsAssets>();
     commands.init_resource::<AgentGraphicsAssets>();
     commands.init_resource::<GobletGraphicsAssets>();
+    commands.insert_resource(EditorMeshAssets {
+        wall: meshes.add(Cuboid::new(CELL_SIZE, WALL_HEIGHT, CELL_SIZE)),
+        agent: meshes.add(Cuboid::new(CELL_SIZE, AGENT_HEIGHT, CELL_SIZE)),
+        ghost: meshes.add(Cuboid::new(CELL_SIZE, GHOST_HEIGHT, CELL_SIZE)),
+        goblet: meshes.add(Cylinder::new(CELL_SIZE / 2.0, GOBLET_HEIGHT)),
+    });
 }
 
 pub fn setup_scene(
@@ -127,7 +142,7 @@ fn apply_tile_visual(
     position: (usize, usize),
     world_width: f32,
     world_height: f32,
-    meshes: &mut Assets<Mesh>,
+    tile_meshes: &EditorMeshAssets,
     wall_graphics: &WallGraphicsAssets,
     agent_graphics: &AgentGraphicsAssets,
     goblet_graphics: &GobletGraphicsAssets,
@@ -137,17 +152,15 @@ fn apply_tile_visual(
             entity.remove::<(Mesh3d, MeshMaterial3d<StandardMaterial>)>();
         }
         EditorTile::Wall => {
-            let mesh = meshes.add(Cuboid::new(CELL_SIZE, WALL_HEIGHT, CELL_SIZE));
             let translation =
                 cell_to_world(position, CELL_SIZE, world_width, world_height, WALL_HEIGHT / 2.0);
             entity.insert((
-                Mesh3d(mesh),
+                Mesh3d(tile_meshes.wall.clone()),
                 MeshMaterial3d(wall_graphics.material.clone()),
                 Transform::from_translation(translation),
             ));
         }
         EditorTile::Agent => {
-            let mesh = meshes.add(Cuboid::new(CELL_SIZE, AGENT_HEIGHT, CELL_SIZE));
             let translation = cell_to_world(
                 position,
                 CELL_SIZE,
@@ -156,13 +169,12 @@ fn apply_tile_visual(
                 AGENT_HEIGHT / 2.0,
             );
             entity.insert((
-                Mesh3d(mesh),
+                Mesh3d(tile_meshes.agent.clone()),
                 MeshMaterial3d(agent_graphics.material.clone()),
                 Transform::from_translation(translation),
             ));
         }
         EditorTile::Ghost => {
-            let mesh = meshes.add(Cuboid::new(CELL_SIZE, GHOST_HEIGHT, CELL_SIZE));
             let translation = cell_to_world(
                 position,
                 CELL_SIZE,
@@ -171,13 +183,12 @@ fn apply_tile_visual(
                 WALL_HEIGHT + GHOST_HEIGHT / 2.0,
             );
             entity.insert((
-                Mesh3d(mesh),
+                Mesh3d(tile_meshes.ghost.clone()),
                 MeshMaterial3d(agent_graphics.ghost_material.clone()),
                 Transform::from_translation(translation),
             ));
         }
         EditorTile::Goblet(reward) => {
-            let mesh = meshes.add(Cylinder::new(CELL_SIZE / 2.0, GOBLET_HEIGHT));
             let translation = cell_to_world(
                 position,
                 CELL_SIZE,
@@ -191,7 +202,7 @@ fn apply_tile_visual(
                 goblet_graphics.false_material.clone()
             };
             entity.insert((
-                Mesh3d(mesh),
+                Mesh3d(tile_meshes.goblet.clone()),
                 MeshMaterial3d(material),
                 Transform::from_translation(translation),
             ));
@@ -199,10 +210,10 @@ fn apply_tile_visual(
     }
 }
 
-pub fn setup_tiles(
+pub(crate) fn setup_tiles(
     mut commands: Commands,
     board: Res<EditorBoard>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    tile_meshes: Res<EditorMeshAssets>,
     wall_graphics: Res<WallGraphicsAssets>,
     agent_graphics: Res<AgentGraphicsAssets>,
     goblet_graphics: Res<GobletGraphicsAssets>,
@@ -218,7 +229,7 @@ pub fn setup_tiles(
                 (col, row),
                 world_width,
                 world_height,
-                &mut meshes,
+                &tile_meshes,
                 &wall_graphics,
                 &agent_graphics,
                 &goblet_graphics,
@@ -227,10 +238,10 @@ pub fn setup_tiles(
     }
 }
 
-pub fn sync_tiles(
+pub(crate) fn sync_tiles(
     mut commands: Commands,
     board: Res<EditorBoard>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    tile_meshes: Res<EditorMeshAssets>,
     wall_graphics: Res<WallGraphicsAssets>,
     agent_graphics: Res<AgentGraphicsAssets>,
     goblet_graphics: Res<GobletGraphicsAssets>,
@@ -247,7 +258,7 @@ pub fn sync_tiles(
             (*col, *row),
             world_width,
             world_height,
-            &mut meshes,
+            &tile_meshes,
             &wall_graphics,
             &agent_graphics,
             &goblet_graphics,

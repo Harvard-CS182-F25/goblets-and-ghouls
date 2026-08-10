@@ -6,7 +6,7 @@ use crate::resources::{
     ConfigResource, GameStateResource, PolicyResource, PolicyTimer, RestartedThisFrame,
     SimulationPaused,
 };
-use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, WALL_HEIGHT};
+use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, RenderMeshAssets, WALL_HEIGHT};
 
 use super::components::{
     Agent, AgentBundle, GhostAgent, GhostAgentBundle, GhostInput, PauseIndicatorBadge,
@@ -16,7 +16,7 @@ use super::visual::AgentGraphicsAssets;
 
 pub fn spawn_agents(
     mut commands: Commands,
-    meshes: Option<ResMut<Assets<Mesh>>>,
+    meshes: Option<Res<RenderMeshAssets>>,
     graphics: Option<Res<AgentGraphicsAssets>>,
     state: Res<GameStateResource>,
     config: Res<ConfigResource>,
@@ -55,19 +55,16 @@ pub fn spawn_agents(
     };
 
     if let Some(graphics) = graphics
-        && let Some(mut meshes) = meshes
+        && let Some(meshes) = meshes
     {
-        let agent_mesh = meshes.add(Cuboid::new(cell, AGENT_HEIGHT, cell));
-        let ghost_mesh = meshes.add(Cuboid::new(cell, GHOST_HEIGHT, cell));
-
         commands.entity(entity).insert((
-            Mesh3d(agent_mesh),
+            Mesh3d(meshes.agent.clone()),
             MeshMaterial3d(graphics.material.clone()),
         ));
 
         if let Some(ghost_entity) = ghost_entity {
             commands.entity(ghost_entity).insert((
-                Mesh3d(ghost_mesh),
+                Mesh3d(meshes.ghost.clone()),
                 MeshMaterial3d(graphics.ghost_material.clone()),
             ));
         }

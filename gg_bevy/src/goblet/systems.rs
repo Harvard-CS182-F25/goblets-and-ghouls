@@ -4,13 +4,13 @@ use gg_core::Goblet as GobletData;
 use crate::coords::{cell_to_world, world_dimensions};
 use crate::goblet::GobletBundle;
 use crate::resources::{ConfigResource, GameStateResource};
-use crate::scene::GOBLET_HEIGHT;
+use crate::scene::{GOBLET_HEIGHT, RenderMeshAssets};
 
 use super::visual::GobletGraphicsAssets;
 
 pub fn spawn_goblets(
     mut commands: Commands,
-    mut meshes: Option<ResMut<Assets<Mesh>>>,
+    meshes: Option<Res<RenderMeshAssets>>,
     goblet_graphics: Option<Res<GobletGraphicsAssets>>,
     state: Res<GameStateResource>,
     config: Res<ConfigResource>,
@@ -32,16 +32,15 @@ pub fn spawn_goblets(
         let mut entity = commands.spawn(GobletBundle::new(&goblet_name, world_position, reward));
 
         if let Some(goblet_graphics) = &goblet_graphics
-            && let Some(meshes_ref) = &mut meshes
+            && let Some(meshes) = &meshes
         {
-            let mesh = meshes_ref.add(Cylinder::new(cell / 2.0, GOBLET_HEIGHT));
             let material = if reward > 0 {
                 goblet_graphics.material.clone()
             } else {
                 goblet_graphics.false_material.clone()
             };
 
-            entity.insert((Mesh3d(mesh.clone()), MeshMaterial3d(material)));
+            entity.insert((Mesh3d(meshes.goblet.clone()), MeshMaterial3d(material)));
         }
     }
 }

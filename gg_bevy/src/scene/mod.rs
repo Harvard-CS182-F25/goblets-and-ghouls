@@ -39,8 +39,21 @@ impl Plugin for ScenePlugin {
     }
 }
 
-fn init_wall_assets(mut commands: Commands, config: Res<ConfigResource>) {
+fn init_wall_assets(
+    mut commands: Commands,
+    mut meshes: Option<ResMut<Assets<Mesh>>>,
+    config: Res<ConfigResource>,
+) {
     if !config.0.headless {
         commands.init_resource::<WallGraphicsAssets>();
+        let cell = config.0.world_generation.cell_size;
+        if let Some(meshes) = &mut meshes {
+            commands.insert_resource(RenderMeshAssets {
+                wall: meshes.add(Cuboid::new(cell, WALL_HEIGHT, cell)),
+                agent: meshes.add(Cuboid::new(cell, AGENT_HEIGHT, cell)),
+                ghost: meshes.add(Cuboid::new(cell, GHOST_HEIGHT, cell)),
+                goblet: meshes.add(Cylinder::new(cell / 2.0, GOBLET_HEIGHT)),
+            });
+        }
     }
 }
