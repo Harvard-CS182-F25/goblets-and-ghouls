@@ -184,7 +184,7 @@ impl Default for EditorState {
         Self {
             current_tool: EditorTile::Wall,
             current_goblet_reward: 1,
-            show_grid: true,
+            show_grid: false,
             out_path: None,
             load_path: None,
             message: None,
@@ -271,7 +271,12 @@ impl Plugin for EditorPlugin {
         app.add_systems(PreStartup, board::init_visual_assets);
         app.add_systems(
             Startup,
-            (board::setup_scene, board::setup_tiles, ui::setup_ui),
+            (
+                board::setup_scene,
+                board::setup_grid,
+                board::setup_tiles,
+                ui::setup_ui,
+            ),
         );
         app.add_systems(
             Update,
@@ -283,7 +288,7 @@ impl Plugin for EditorPlugin {
                 input::handle_mouse,
                 input::handle_exit_dialog_buttons,
                 input::tick_message_timer,
-                board::draw_grid,
+                board::sync_grid_visibility,
                 board::update_goblet_label_positions,
                 ui::sync_ui,
                 ui::sync_dirty_indicator,

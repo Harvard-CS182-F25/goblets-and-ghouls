@@ -8,12 +8,19 @@ use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, GOBLET_HEIGHT, WALL_HEIGHT, Groun
 
 use super::{CELL_SIZE, EditorBoard, EditorState, EditorTile};
 
+const GRID_LINE_WIDTH: f32 = 0.15;
+const GRID_LINE_HEIGHT: f32 = 0.02;
+
 /// Marker: the tile entity at board position `(row, col)`.
 #[derive(Component)]
 pub struct EditorTileEntity {
     pub row: usize,
     pub col: usize,
 }
+
+/// Marker: a persistent grid-line overlay entity.
+#[derive(Component)]
+pub struct GridLine;
 
 /// Must run in `PreStartup` — `setup_tiles` (in `Startup`) needs these
 /// resources to already exist, and `Commands`-queued inserts aren't applied
@@ -57,6 +64,46 @@ pub fn setup_scene(
         Mesh3d(mesh),
         MeshMaterial3d(material),
     ));
+}
+
+/// Spawns grid lines once so they remain a continuous overlay above board
+/// objects, rather than being occluded as ground-level gizmos.
+pub fn setup_grid(
+    mut commands: Commands,
+    board: Res<EditorBoard>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
+    let half_w = world_width / 2.0;
+    let half_h = world_height / 2.0;
+    let y = WALL_HEIGHT + GHOST_HEIGHT + GRID_LINE_HEIGHT / 2.0;
+    let material = materials.add(StandardMaterial {
+        base_color: Color::srgba(1.0, 1.0, 1.0, 0.4),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    });
+
+    for col in 0..=board.width {
+        let x = col as f32 * CELL_SIZE - half_w;
+        commands.spawn((
+            GridLine,
+            Mesh3d(meshes.add(Cuboid::new(GRID_LINE_WIDTH, GRID_LINE_HEIGHT, world_height))),
+            MeshMaterial3d(material.clone()),
+            Transform::from_xyz(x, y, 0.0),
+        ));
+    }
+
+    for row in 0..=board.height {
+        let z = row as f32 * CELL_SIZE - half_h;
+        commands.spawn((
+            GridLine,
+            Mesh3d(meshes.add(Cuboid::new(world_width, GRID_LINE_HEIGHT, GRID_LINE_WIDTH))),
+            MeshMaterial3d(material.clone()),
+            Transform::from_xyz(0.0, y, z),
+        ));
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -274,23 +321,17 @@ pub fn update_goblet_label_positions(
     }
 }
 
-pub fn draw_grid(mut gizmos: Gizmos, board: Res<EditorBoard>, state: Res<EditorState>) {
-    if !state.show_grid {
-        return;
-    }
-
-    let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
-    let half_w = world_width / 2.0;
-    let half_h = world_height / 2.0;
-    let y = 0.05;
-    let color = Color::srgba(1.0, 1.0, 1.0, 0.4);
-
-    for col in 0..=board.width {
-        let x = col as f32 * CELL_SIZE - half_w;
-        gizmos.line(Vec3::new(x, y, -half_h), Vec3::new(x, y, half_h), color);
-    }
-    for row in 0..=board.height {
-        let z = row as f32 * CELL_SIZE - half_h;
-        gizmos.line(Vec3::new(-half_w, y, z), Vec3::new(half_w, y, z), color);
+/// Shows or hides the persistent grid overlay.
+pub fn sync_grid_visibility(
+    state: Res<EditorState>,
+    mut grid_lines: Query<&mut Visibility, With<GridLine>>,
+) {
+    let visibility = if state.show_grid {
+        Visibility::Visible
+    } else {
+        Visibility::Hidden
+    };
+    for mut grid_line in &mut grid_lines {
+        *grid_line = visibility;
     }
 }
