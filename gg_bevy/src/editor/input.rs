@@ -7,7 +7,7 @@ use crate::camera::{PAN_PADDING_CELLS, PanState, drag_delta, pan_and_clamp, shif
 use crate::coords::raycast_to_grid_cell;
 use crate::scene::GroundPlane;
 
-use super::ui::ExitDialogButton;
+use super::ui::{ExitDialogButton, FilenameInputBox};
 use super::{CELL_SIZE, EditorBoard, EditorState, EditorTile, save_board};
 
 pub fn handle_keyboard(
@@ -35,13 +35,13 @@ pub fn handle_keyboard(
     if keys.just_pressed(KeyCode::KeyW) {
         state.current_tool = EditorTile::Wall;
     }
-    if keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::Digit1) {
+    if keys.just_pressed(KeyCode::Digit1) {
         state.current_tool = EditorTile::Agent;
     }
-    if keys.just_pressed(KeyCode::KeyH) || keys.just_pressed(KeyCode::Digit2) {
+    if keys.just_pressed(KeyCode::Digit2) {
         state.current_tool = EditorTile::Ghost;
     }
-    if keys.just_pressed(KeyCode::KeyO) || keys.just_pressed(KeyCode::Digit3) {
+    if keys.just_pressed(KeyCode::Digit3) {
         state.current_tool = EditorTile::Goblet(state.current_goblet_reward);
     }
     if keys.just_pressed(KeyCode::BracketLeft) {
@@ -137,6 +137,24 @@ pub fn handle_text_input(
                 _ => {}
             }
         } else if event.logical_key == Key::Tab {
+            state.filename_backup = state.filename.clone();
+            state.filename_editing = true;
+        }
+    }
+}
+
+/// Focuses the save-path box when it is clicked. Tab-to-focus is handled by
+/// `handle_text_input`.
+pub fn handle_filename_click(
+    mut state: ResMut<EditorState>,
+    interaction_q: Query<&Interaction, (Changed<Interaction>, With<FilenameInputBox>)>,
+) {
+    if state.exit_dialog_open {
+        return;
+    }
+
+    for interaction in &interaction_q {
+        if *interaction == Interaction::Pressed && !state.filename_editing {
             state.filename_backup = state.filename.clone();
             state.filename_editing = true;
         }

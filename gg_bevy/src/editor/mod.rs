@@ -278,6 +278,7 @@ impl Plugin for EditorPlugin {
             (
                 input::handle_keyboard,
                 input::handle_text_input,
+                input::handle_filename_click,
                 input::handle_mouse,
                 input::handle_exit_dialog_buttons,
                 input::tick_message_timer,

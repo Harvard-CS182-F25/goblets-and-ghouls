@@ -21,8 +21,13 @@ pub fn spawn_goblets(
 
     for (i, &GobletData { position, reward }) in state.0.board.goblets.iter().enumerate() {
         let goblet_name = format!("Goblet {}", i + 1);
-        let world_position =
-            cell_to_world(position, cell, world_width, world_height, GOBLET_HEIGHT / 2.0);
+        let world_position = cell_to_world(
+            position,
+            cell,
+            world_width,
+            world_height,
+            GOBLET_HEIGHT / 2.0,
+        );
 
         let mut entity = commands.spawn(GobletBundle::new(&goblet_name, world_position, reward));
 
