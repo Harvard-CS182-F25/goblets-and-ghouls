@@ -38,6 +38,10 @@ pub struct PauseIndicatorBadge;
 #[derive(Component)]
 pub struct PauseIndicatorText;
 
+/// Marks the automatic simulation-speed HUD text.
+#[derive(Component)]
+pub struct SimulationSpeedText;
+
 #[derive(Debug, Clone, Bundle, Derivative)]
 #[derivative(Default)]
 pub struct AgentBundle {

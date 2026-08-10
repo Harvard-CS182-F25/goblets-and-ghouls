@@ -94,7 +94,10 @@ pub fn setup_key_instructions(
                 },
                 TextLayout::new_with_justify(Justify::Right),
             ));
-
+            parent.spawn(Node {
+                height: Val::Px(14.0),
+                ..default()
+            });
             if is_teleop {
                 parent.spawn((
                     Text::new("Arrows/WASD: Move Ghost"),
@@ -115,6 +118,14 @@ pub fn setup_key_instructions(
             } else {
                 parent.spawn((
                     Text::new("Space: Pause/Play"),
+                    TextFont {
+                        font_size: 14.0,
+                        ..default()
+                    },
+                    TextLayout::new_with_justify(Justify::Right),
+                ));
+                parent.spawn((
+                    Text::new("</>: Change Speed"),
                     TextFont {
                         font_size: 14.0,
                         ..default()

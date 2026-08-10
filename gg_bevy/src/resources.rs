@@ -20,6 +20,34 @@ pub struct HeatmapResource(pub Option<ValueGrid>);
 #[derive(Resource)]
 pub struct PolicyTimer(pub Timer);
 
+/// Speed multiplier for automatic policy-driven simulation.
+#[derive(Resource)]
+pub struct SimulationSpeed {
+    index: usize,
+}
+
+impl Default for SimulationSpeed {
+    fn default() -> Self {
+        Self { index: 3 }
+    }
+}
+
+impl SimulationSpeed {
+    const MULTIPLIERS: [f32; 8] = [0.25, 0.5, 0.75, 1.0, 1.5, 1.5, 2.0, 4.0];
+
+    pub fn multiplier(&self) -> f32 {
+        Self::MULTIPLIERS[self.index]
+    }
+
+    pub fn slower(&mut self) {
+        self.index = self.index.saturating_sub(1);
+    }
+
+    pub fn faster(&mut self) {
+        self.index = (self.index + 1).min(Self::MULTIPLIERS.len() - 1);
+    }
+}
+
 /// Whether the automatic policy-driven simulation is paused. Only
 /// meaningful (and only toggleable) when `GhostPolicy::Teleop` is not
 /// active — in Teleop mode the simulation only ever advances on a keypress,

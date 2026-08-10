@@ -4,13 +4,13 @@ use gg_core::Action;
 use crate::coords::{cell_to_world, world_dimensions};
 use crate::resources::{
     ConfigResource, GameStateResource, PolicyResource, PolicyTimer, RestartedThisFrame,
-    SimulationPaused,
+    SimulationPaused, SimulationSpeed,
 };
 use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, RenderMeshAssets, WALL_HEIGHT};
 
 use super::components::{
     Agent, AgentBundle, GhostAgent, GhostAgentBundle, GhostInput, PauseIndicatorBadge,
-    PauseIndicatorText, PlayerActionMessage,
+    PauseIndicatorText, PlayerActionMessage, SimulationSpeedText,
 };
 use super::visual::AgentGraphicsAssets;
 
@@ -167,6 +167,7 @@ pub fn evaluate_policy(
     config: Res<ConfigResource>,
     paused: Res<SimulationPaused>,
     restarted: Res<RestartedThisFrame>,
+    speed: Res<SimulationSpeed>,
 ) {
     // Don't tick the timer at all while paused, so resuming continues from
     // wherever it left off rather than firing immediately.
@@ -174,7 +175,7 @@ pub fn evaluate_policy(
         return;
     }
 
-    timer.0.tick(time.delta());
+    timer.0.tick(time.delta().mul_f32(speed.multiplier()));
     if !timer.0.is_finished() {
         return;
     }
@@ -187,6 +188,18 @@ pub fn evaluate_policy(
         action,
         ghost_input: GhostInput::Auto,
     });
+}
+
+/// Changes the automatic simulation speed with `,` and `.`.
+pub fn adjust_simulation_speed(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut speed: ResMut<SimulationSpeed>,
+) {
+    if keys.just_pressed(KeyCode::Comma) {
+        speed.slower();
+    } else if keys.just_pressed(KeyCode::Period) {
+        speed.faster();
+    }
 }
 
 /// Toggles `SimulationPaused`. Only registered when `GhostPolicy::Teleop`
@@ -208,7 +221,11 @@ pub fn toggle_pause(
 /// the seed/reward info moved into the upper-right panel). Not spawned at
 /// all when `GhostPolicy::Teleop` is active — pause/play isn't a meaningful
 /// concept for a simulation that only ever advances on a keypress.
-pub fn spawn_pause_indicator(mut commands: Commands, config: Res<ConfigResource>) {
+pub fn spawn_pause_indicator(
+    mut commands: Commands,
+    config: Res<ConfigResource>,
+    speed: Res<SimulationSpeed>,
+) {
     if config.0.agent.ghost_policy == Some(gg_core::GhostPolicy::Teleop) {
         return;
     }
@@ -222,18 +239,41 @@ pub fn spawn_pause_indicator(mut commands: Commands, config: Res<ConfigResource>
                 padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.1, 0.6, 0.1, 0.85)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)),
             PauseIndicatorBadge,
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new("PLAYING"),
+                Text::new(""),
                 TextFont {
                     font_size: 14.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
                 PauseIndicatorText,
+            ));
+        });
+
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(36.0),
+                left: Val::Px(5.0),
+                padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.3, 0.3, 0.6, 0.85)),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(format!("SPEED {}", format!("{}x", speed.multiplier()))),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                SimulationSpeedText,
             ));
         });
 }
@@ -252,9 +292,9 @@ pub fn update_pause_indicator(
     }
 
     let (color, label) = if paused.0 {
-        (Color::srgba(0.7, 0.15, 0.1, 0.85), "PAUSED")
+        (Color::srgba(0.75, 0.1, 0.1, 0.85), "PAUSED")
     } else {
-        (Color::srgba(0.1, 0.6, 0.1, 0.85), "PLAYING")
+        (Color::srgba(0.1, 0.75, 0.1, 0.85), "PLAYING")
     };
 
     for mut bg in &mut badges {
@@ -262,6 +302,20 @@ pub fn update_pause_indicator(
     }
     for mut text in &mut texts {
         text.0 = label.to_string();
+    }
+}
+
+/// Keeps the speed badge in sync with speed changes.
+pub fn update_speed_indicator(
+    speed: Res<SimulationSpeed>,
+    mut texts: Query<&mut Text, With<SimulationSpeedText>>,
+) {
+    if !speed.is_changed() {
+        return;
+    }
+
+    for mut text in &mut texts {
+        text.0 = format!("SPEED {}", format!("{}x", speed.multiplier()));
     }
 }
 
