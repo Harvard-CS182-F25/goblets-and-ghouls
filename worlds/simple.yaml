@@ -1,22 +1,11 @@
 width: 5
 height: 5
-walls: []
-agent_position:
-- 1
-- 2
-ghost_position:
-- 4
-- 1
+walls:
+  - [2, 2]
+agent_position: [0, 4]
+ghost_position: [4, 0]
 goblets:
 - position:
   - 2
   - 0
   reward: 10
-- position:
-  - 3
-  - 2
-  reward: 1
-- position:
-  - 3
-  - 3
-  reward: 1

@@ -267,7 +267,7 @@ pub fn spawn_pause_indicator(
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new(format!("SPEED {}", format!("{}x", speed.multiplier()))),
+                Text::new(format!("SPEED {}x", speed.multiplier())),
                 TextFont {
                     font_size: 14.0,
                     ..default()

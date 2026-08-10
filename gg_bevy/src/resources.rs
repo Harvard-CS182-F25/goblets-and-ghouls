@@ -33,7 +33,7 @@ impl Default for SimulationSpeed {
 }
 
 impl SimulationSpeed {
-    const MULTIPLIERS: [f32; 8] = [0.25, 0.5, 0.75, 1.0, 1.5, 1.5, 2.0, 4.0];
+    const MULTIPLIERS: [f32; 8] = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 4.0];
 
     pub fn multiplier(&self) -> f32 {
         Self::MULTIPLIERS[self.index]
