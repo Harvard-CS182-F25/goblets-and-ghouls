@@ -208,6 +208,21 @@ impl EditorState {
     }
 }
 
+/// Shortens absolute paths under the current working directory for display in
+/// the editor's filename box. Relative and external paths are left unchanged.
+fn display_path(path: String) -> String {
+    let path = std::path::Path::new(&path);
+    if !path.is_absolute() {
+        return path.to_string_lossy().into_owned();
+    }
+
+    std::env::current_dir()
+        .ok()
+        .and_then(|cwd| path.strip_prefix(cwd).ok())
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|| path.to_string_lossy().into_owned())
+}
+
 /// Attempts to save `board` to `state.filename` (or a generated default
 /// name), updating `state`'s message/dirty/out_path accordingly. Returns
 /// whether the save succeeded — used to gate whether the exit-confirmation
@@ -260,6 +275,7 @@ impl Plugin for EditorPlugin {
             .out_path
             .clone()
             .or_else(|| self.load_path.clone())
+            .map(display_path)
             .unwrap_or_default();
         let state = EditorState {
             out_path: self.out_path.clone(),

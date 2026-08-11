@@ -220,6 +220,7 @@ pub fn setup_ui(mut commands: Commands) {
                     font_size: 11.0,
                     ..Default::default()
                 },
+                TextLayout::new_with_linebreak(LineBreak::AnyCharacter),
                 TextColor(Color::srgb(0.9, 0.9, 0.9)),
             ));
 
