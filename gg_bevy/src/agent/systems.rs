@@ -190,14 +190,14 @@ pub fn evaluate_policy(
     });
 }
 
-/// Changes the automatic simulation speed with `,` and `.`.
+/// Changes the automatic simulation speed with `[` and `]`.
 pub fn adjust_simulation_speed(
     keys: Res<ButtonInput<KeyCode>>,
     mut speed: ResMut<SimulationSpeed>,
 ) {
-    if keys.just_pressed(KeyCode::Comma) {
+    if keys.just_pressed(KeyCode::BracketLeft) {
         speed.slower();
-    } else if keys.just_pressed(KeyCode::Period) {
+    } else if keys.just_pressed(KeyCode::BracketRight) {
         speed.faster();
     }
 }

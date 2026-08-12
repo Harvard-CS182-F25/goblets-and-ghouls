@@ -125,7 +125,7 @@ pub fn setup_key_instructions(
                     TextLayout::new_with_justify(Justify::Right),
                 ));
                 parent.spawn((
-                    Text::new("</>: Change Speed"),
+                    Text::new("[/]: Change Speed"),
                     TextFont {
                         font_size: 14.0,
                         ..default()

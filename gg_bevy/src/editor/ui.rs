@@ -48,7 +48,7 @@ fn tool_color(tile: EditorTile) -> Color {
             if reward > 0 {
                 Color::srgb_u8(187, 155, 68)
             } else {
-                Color::srgb_u8(166, 160, 131)
+                Color::srgb_u8(174, 130, 97)
             }
         }
     }

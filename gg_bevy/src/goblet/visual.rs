@@ -10,7 +10,7 @@ impl FromWorld for GobletGraphicsAssets {
     fn from_world(world: &mut World) -> Self {
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
         let material = materials.add(Color::srgb_u8(255, 204, 0));
-        let false_material = materials.add(Color::srgb_u8(217, 209, 159));
+        let false_material = materials.add(Color::srgb_u8(225, 156, 103));
 
         Self {
             material,

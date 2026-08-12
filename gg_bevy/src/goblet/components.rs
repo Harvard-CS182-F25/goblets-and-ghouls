@@ -13,6 +13,12 @@ pub struct Goblet {
     value: i32,
 }
 
+#[derive(Component)]
+pub struct GobletRewardLabel {
+    pub position: (usize, usize),
+    pub digit_count: usize,
+}
+
 #[derive(Bundle)]
 pub struct GobletBundle {
     pub name: Name,
