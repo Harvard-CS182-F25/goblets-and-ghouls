@@ -12,6 +12,8 @@ const GRID_LINE_WIDTH: f32 = 0.2;
 const GRID_LINE_HEIGHT: f32 = 0.02;
 /// Hide grid lines once individual cells are too small.
 const MIN_GRID_CELL_SIZE_PX: f32 = 20.0;
+const GOBLET_LABEL_FILL: f32 = 0.8;
+const DIGIT_WIDTH_RATIO: f32 = 0.6;
 
 /// Marker: the tile entity at board position `(row, col)`.
 #[derive(Component)]
@@ -266,13 +268,12 @@ pub(crate) fn sync_tiles(
     }
 }
 
-/// Marker: a UI text label showing a goblet's `|reward|` (color already
-/// conveys sign), tracking the tile's world position on screen. Editor-only
-/// — the live game's `goblet/systems.rs::spawn_goblets` doesn't render this.
+/// Marker: a UI text label showing a goblet's `|reward|`.
 #[derive(Component)]
 pub struct GobletRewardLabel {
     pub row: usize,
     pub col: usize,
+    pub digit_count: usize,
 }
 
 /// Rebuilds the goblet-reward labels whenever the board changes. A full
@@ -290,19 +291,27 @@ pub fn sync_goblet_labels(
     for (row, cols) in board.tiles.iter().enumerate() {
         for (col, &tile) in cols.iter().enumerate() {
             if let EditorTile::Goblet(reward) = tile {
+                let label = reward.unsigned_abs().to_string();
+                let label_color = if reward > 0 {
+                    Color::srgb(0.4, 0.25, 0.0)
+                } else {
+                    Color::srgb(0.45, 0.05, 0.1)
+                };
                 commands.spawn((
-                    GobletRewardLabel { row, col },
-                    Text::new(reward.unsigned_abs().to_string()),
-                    TextFont {
-                        font_size: 16.0,
-                        ..Default::default()
+                    GobletRewardLabel {
+                        row,
+                        col,
+                        digit_count: label.len(),
                     },
-                    TextColor(Color::BLACK),
+                    Text::new(label),
+                    TextFont::default(),
+                    TextColor(label_color),
+                    TextLayout::new_with_justify(Justify::Center),
                     Node {
                         position_type: PositionType::Absolute,
                         ..Default::default()
                     },
-                    Visibility::Visible,
+                    Visibility::Hidden,
                 ));
             }
         }
@@ -315,29 +324,39 @@ pub fn sync_goblet_labels(
 /// projected X/Z screen position — it's just for readability of the code.
 pub fn update_goblet_label_positions(
     board: Res<EditorBoard>,
-    camera_q: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
-    mut labels: Query<(&GobletRewardLabel, &mut Node, &mut Visibility)>,
+    camera_q: Query<(&Camera, &GlobalTransform, &Projection), With<Camera3d>>,
+    mut labels: Query<(
+        &GobletRewardLabel,
+        &mut TextFont,
+        &mut Node,
+        &mut Visibility,
+    )>,
 ) {
-    let Ok((camera, cam_transform)) = camera_q.single() else {
+    let Ok((camera, cam_transform, Projection::Orthographic(orthographic))) = camera_q.single()
+    else {
         return;
     };
     let (world_width, world_height) = world_dimensions(board.width, board.height, CELL_SIZE);
+    let label_size = CELL_SIZE / orthographic.scale.abs();
 
-    for (label, mut node, mut visibility) in &mut labels {
+    for (label, mut font, mut node, mut visibility) in &mut labels {
         let world_pos = cell_to_world(
             (label.col, label.row),
             CELL_SIZE,
             world_width,
             world_height,
-            1.6, // just above the goblet mesh (Cylinder height 3.0, centered at y=0)
+            GOBLET_HEIGHT,
         );
 
         match camera.world_to_viewport(cam_transform, world_pos) {
             Ok(screen_pos) => {
+                let text_aspect_ratio = DIGIT_WIDTH_RATIO * label.digit_count as f32;
+                let font_size = label_size * GOBLET_LABEL_FILL / text_aspect_ratio.max(1.0);
+                font.font_size = font_size;
                 *visibility = Visibility::Visible;
-                // Rough centering for 1-3 digit numbers at font_size 16.
-                node.left = Val::Px(screen_pos.x - 6.0);
-                node.top = Val::Px(screen_pos.y - 8.0);
+                node.width = Val::Px(label_size);
+                node.left = Val::Px(screen_pos.x - label_size / 2.0);
+                node.top = Val::Px(screen_pos.y - font_size * 0.6);
             }
             Err(_) => {
                 *visibility = Visibility::Hidden;
