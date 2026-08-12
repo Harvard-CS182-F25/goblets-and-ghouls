@@ -12,7 +12,7 @@ const GRID_LINE_WIDTH: f32 = 0.2;
 const GRID_LINE_HEIGHT: f32 = 0.02;
 /// Hide grid lines once individual cells are too small.
 const MIN_GRID_CELL_SIZE_PX: f32 = 20.0;
-const GOBLET_LABEL_FILL: f32 = 0.8;
+const GOBLET_LABEL_FILL: f32 = 0.65;
 const DIGIT_WIDTH_RATIO: f32 = 0.6;
 
 /// Marker: the tile entity at board position `(row, col)`.
@@ -293,9 +293,9 @@ pub fn sync_goblet_labels(
             if let EditorTile::Goblet(reward) = tile {
                 let label = reward.unsigned_abs().to_string();
                 let label_color = if reward > 0 {
-                    Color::srgb(0.4, 0.25, 0.0)
+                    Color::srgba(0.4, 0.25, 0.0, 0.9)
                 } else {
-                    Color::srgb(0.45, 0.05, 0.1)
+                    Color::srgba(0.45, 0.05, 0.1, 0.9)
                 };
                 commands.spawn((
                     GobletRewardLabel {

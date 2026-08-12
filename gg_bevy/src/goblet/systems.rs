@@ -8,7 +8,7 @@ use crate::scene::{GOBLET_HEIGHT, RenderMeshAssets};
 
 use super::visual::GobletGraphicsAssets;
 
-const LABEL_FILL: f32 = 0.80;
+const LABEL_FILL: f32 = 0.65;
 const DIGIT_WIDTH_RATIO: f32 = 0.6;
 
 pub fn spawn_goblets(
@@ -46,16 +46,10 @@ pub fn spawn_goblets(
             entity.insert((Mesh3d(meshes.goblet.clone()), MeshMaterial3d(material)));
 
             let label = reward.unsigned_abs().to_string();
-            let (label_color, shadow_color) = if reward > 0 {
-                (
-                    Color::srgba(0.4, 0.25, 0.0, 0.6),
-                    Color::srgba(0.4, 0.25, 0.0, 0.4),
-                )
+            let label_color = if reward > 0 {
+                Color::srgba(0.4, 0.25, 0.0, 0.9)
             } else {
-                (
-                    Color::srgba(0.45, 0.05, 0.1, 0.6),
-                    Color::srgba(0.45, 0.05, 0.1, 0.4),
-                )
+                Color::srgba(0.45, 0.05, 0.1, 0.9)
             };
             commands.spawn((
                 GobletRewardLabel {
@@ -65,10 +59,6 @@ pub fn spawn_goblets(
                 Text::new(label),
                 TextFont::default(),
                 TextColor(label_color),
-                TextShadow {
-                    offset: Vec2::splat(0.5),
-                    color: shadow_color,
-                },
                 TextLayout::new_with_justify(Justify::Center),
                 Node {
                     position_type: PositionType::Absolute,
@@ -99,7 +89,7 @@ pub fn update_goblet_reward_labels(
     let cell_size = config.0.world_generation.cell_size;
     let (world_width, world_height) =
         world_dimensions(state.0.board.width, state.0.board.height, cell_size);
-    let label_size = cell_size / orthographic.scale.abs() * 0.8;
+    let label_size = cell_size / orthographic.scale.abs();
 
     for (label, mut font, mut node, mut visibility) in &mut labels {
         let world_position = cell_to_world(
