@@ -6,7 +6,7 @@ use bevy::input::common_conditions::input_pressed;
 use bevy::prelude::*;
 use gg_core::{Goblet, WorldFile};
 
-use crate::camera::{zoom_in, zoom_out};
+use crate::camera::{CameraZoomLimits, zoom_in, zoom_out};
 
 /// Cell size used purely for the editor's own rendering scale (the editor
 /// isn't tied to a `GGConfig`, unlike the live game).
@@ -286,6 +286,7 @@ impl Plugin for EditorPlugin {
         app.insert_resource(self.board.clone());
         app.insert_resource(state);
         app.init_resource::<crate::camera::PanState>();
+        app.init_resource::<CameraZoomLimits>();
 
         app.add_systems(PreStartup, board::init_visual_assets);
         app.add_systems(

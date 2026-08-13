@@ -1,39 +1,63 @@
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, PrimaryWindow, SystemCursorIcon};
 
-use crate::camera::{MAX_SCALE, MIN_SCALE, PanState, drag_delta, pan_and_clamp, shift_held};
+use crate::camera::{CameraZoomLimits, PanState, drag_delta, pan_and_clamp, shift_held};
 use crate::coords::world_dimensions;
 use crate::resources::{ConfigResource, GameStateResource};
 
 use super::PAN_PADDING_CELLS;
 
-pub fn setup_camera(mut commands: Commands, config: Res<ConfigResource>) {
+pub fn setup_camera(
+    mut commands: Commands,
+    config: Res<ConfigResource>,
+    state: Res<GameStateResource>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+) {
     if config.0.headless {
         return;
+    }
+
+    let scale = config.0.camera.scale;
+    if let Ok(window) = windows.single() {
+        let cell_size = config.0.world_generation.cell_size;
+        let (board_width, board_height) =
+            world_dimensions(state.0.board.width, state.0.board.height, cell_size);
+        commands.insert_resource(CameraZoomLimits::new(
+            Vec2::new(board_width, board_height),
+            cell_size,
+            Vec2::new(window.width(), window.height()),
+            scale,
+        ));
     }
 
     commands.spawn((
         Camera3d::default(),
         Transform::from_translation(Vec3::new(0.0, 10.0, 0.0)).looking_at(Vec3::ZERO, Vec3::NEG_Z),
         Projection::from(OrthographicProjection {
-            scale: config.0.camera.scale,
+            scale,
             ..OrthographicProjection::default_3d()
         }),
     ));
 }
 
-pub fn zoom_in(mut query: Query<&mut Projection, With<Camera3d>>) {
+pub fn zoom_in(limits: Res<CameraZoomLimits>, mut query: Query<&mut Projection, With<Camera3d>>) {
     for mut proj in query.iter_mut() {
         if let Projection::Orthographic(ortho) = &mut *proj {
-            ortho.scale = ortho.scale.signum() * (ortho.scale.abs() * 0.97).max(MIN_SCALE);
+            let scale = ortho.scale.abs();
+            if scale > limits.min_scale {
+                ortho.scale = ortho.scale.signum() * (scale * 0.97).max(limits.min_scale);
+            }
         }
     }
 }
 
-pub fn zoom_out(mut query: Query<&mut Projection, With<Camera3d>>) {
+pub fn zoom_out(limits: Res<CameraZoomLimits>, mut query: Query<&mut Projection, With<Camera3d>>) {
     for mut proj in query.iter_mut() {
         if let Projection::Orthographic(ortho) = &mut *proj {
-            ortho.scale = ortho.scale.signum() * (ortho.scale.abs() / 0.97).min(MAX_SCALE);
+            let scale = ortho.scale.abs();
+            if scale < limits.max_scale {
+                ortho.scale = ortho.scale.signum() * (scale / 0.97).min(limits.max_scale);
+            }
         }
     }
 }

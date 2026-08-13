@@ -70,6 +70,7 @@ pub fn setup_ui(mut commands: Commands) {
                 ..Default::default()
             },
             BackgroundColor(Color::srgba(0.07, 0.07, 0.09, 0.95)),
+            GlobalZIndex(1),
         ))
         .with_children(|panel| {
             // Title row: name and unsaved-changes dot.

@@ -2,6 +2,7 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 
 use crate::agent::AgentGraphicsAssets;
+use crate::camera::{CameraZoomLimits, fit_scale};
 use crate::coords::{cell_to_world, world_dimensions};
 use crate::goblet::GobletGraphicsAssets;
 use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, GOBLET_HEIGHT, WALL_HEIGHT, GroundPlane, WallGraphicsAssets};
@@ -69,11 +70,22 @@ pub fn setup_scene(
         .single()
         .map(|window| {
             let visible_width = (window.width() - PANEL_WIDTH).max(1.0);
-            let scale = (world_width * 1.15 / visible_width)
-                .max(world_height * 1.15 / window.height());
+            let scale = fit_scale(
+                Vec2::new(world_width, world_height),
+                Vec2::new(visible_width, window.height()),
+            );
             (-scale, scale * PANEL_WIDTH / 2.0)
         })
         .unwrap_or((-0.15, 0.0));
+
+    if let Ok(window) = windows.single() {
+        commands.insert_resource(CameraZoomLimits::new(
+            Vec2::new(world_width, world_height),
+            CELL_SIZE,
+            Vec2::new((window.width() - PANEL_WIDTH).max(1.0), window.height()),
+            scale,
+        ));
+    }
 
     commands.spawn((
         Camera3d::default(),
