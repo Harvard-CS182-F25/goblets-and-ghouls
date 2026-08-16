@@ -36,8 +36,9 @@ pub struct HeatmapColorRange(pub Option<(f32, f32)>);
 pub struct VisualizeVisibility(pub bool);
 
 /// Marks a persistent per-cell visibility-overlay tile entity and the cell
-/// it represents. Darkened (translucent black) whenever that cell is not
-/// currently visible from the agent's position; hidden otherwise.
+/// it represents. Floor cells sit over the floor, wall cells over the wall
+/// tops. Darkened (translucent black) whenever that cell is not currently
+/// visible from the agent's position; hidden otherwise.
 #[derive(Component, Clone, Copy)]
 pub struct VisibilityTile(pub (usize, usize));
 

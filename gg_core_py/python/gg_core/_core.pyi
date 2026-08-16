@@ -6,34 +6,60 @@ import typing
 from enum import Enum
 
 class AgentConfig:
+    r"""
+    Stores the configuration of the agent and the ghost, if there is one.
+    """
     @property
-    def name(self) -> builtins.str: ...
+    def name(self) -> builtins.str:
+        r"""
+        Returns the name of the agent.
+        """
     @name.setter
     def name(self, value: builtins.str) -> None: ...
     @property
-    def ghost_policy(self) -> typing.Optional[GhostPolicy]: ...
+    def ghost_policy(self) -> typing.Optional[GhostPolicy]:
+        r"""
+        Returns the ghost's policy, if there is one.
+        """
     @ghost_policy.setter
     def ghost_policy(self, value: typing.Optional[GhostPolicy]) -> None: ...
     @property
-    def transition(self) -> builtins.list[builtins.float]: ...
-    @transition.setter
-    def transition(self, value: builtins.list[builtins.float]) -> None: ...
+    def ghost_penalty(self) -> builtins.int:
+        r"""
+        Returns the reward applied when the ghost catches the agent.
+        """
+    @ghost_penalty.setter
+    def ghost_penalty(self, value: builtins.int) -> None: ...
     @property
     def ghost_occlusion(self) -> builtins.bool:
         r"""
-        When true, a ghost hidden behind a wall (no line of sight from the
-        agent) is treated as if it were at the agent's own position for
-        policy-lookup purposes, the same convention used when no ghost exists.
+        When true, a ghost hidden behind a wall (i.e., with no line of sight
+        from the agent) is not observed for policy look-up purposes. Defaults
+        to false. Invalid or hypothetical states where the ghost is inside a
+        wall are also treated as hidden.
         """
     @ghost_occlusion.setter
-    def ghost_occlusion(self, value: builtins.bool) -> None:
+    def ghost_occlusion(self, value: builtins.bool) -> None: ...
+    @property
+    def transition(self) -> builtins.list[builtins.float]:
         r"""
-        When true, a ghost hidden behind a wall (no line of sight from the
-        agent) is treated as if it were at the agent's own position for
-        policy-lookup purposes, the same convention used when no ghost exists.
+        Returns the probabilities that the agent's actual action are
+        [intended, right, back, left]. Entries must be nonnegative and sum to 1.
         """
+    @transition.setter
+    def transition(self, value: builtins.list[builtins.float]) -> None: ...
+    def __repr__(self) -> builtins.str: ...
+    def __str__(self) -> builtins.str: ...
 
 class Board:
+    r"""
+    Represents the state of the board.
+    Stores the dimensions and board layout.
+    """
+    @property
+    def width(self) -> builtins.int: ...
+    @property
+    def height(self) -> builtins.int: ...
     @property
     def agent_position(self) -> tuple[builtins.int, builtins.int]: ...
     @property
@@ -42,10 +68,6 @@ class Board:
     def goblets(self) -> builtins.list[Goblet]: ...
     @property
     def wall_positions(self) -> builtins.set[tuple[builtins.int, builtins.int]]: ...
-    @property
-    def width(self) -> builtins.int: ...
-    @property
-    def height(self) -> builtins.int: ...
     def __getitem__(self, position:tuple[builtins.int, builtins.int]) -> EntityType: ...
 
 class CameraConfig:
@@ -53,6 +75,8 @@ class CameraConfig:
     def scale(self) -> builtins.float: ...
     @scale.setter
     def scale(self, value: builtins.float) -> None: ...
+    def __repr__(self) -> builtins.str: ...
+    def __str__(self) -> builtins.str: ...
 
 class EntityType:
     class Empty(EntityType):
@@ -90,22 +114,17 @@ class EntityType:
     ...
 
 class GGConfig:
+    r"""
+    Represents the entire configuration of the game.
+    """
     @property
     def agent(self) -> AgentConfig: ...
-    @agent.setter
-    def agent(self, value: AgentConfig) -> None: ...
-    @property
-    def camera(self) -> CameraConfig: ...
-    @camera.setter
-    def camera(self, value: CameraConfig) -> None: ...
     @property
     def goblets(self) -> GobletConfig: ...
-    @goblets.setter
-    def goblets(self, value: GobletConfig) -> None: ...
     @property
     def world_generation(self) -> WorldGenerationConfig: ...
-    @world_generation.setter
-    def world_generation(self, value: WorldGenerationConfig) -> None: ...
+    @property
+    def camera(self) -> CameraConfig: ...
     @property
     def render_delay_secs(self) -> builtins.float: ...
     @render_delay_secs.setter
@@ -115,9 +134,19 @@ class GGConfig:
     @generation_seed.setter
     def generation_seed(self, value: typing.Optional[builtins.int]) -> None: ...
     @property
-    def episode_seed(self) -> typing.Optional[builtins.int]: ...
+    def episode_seed(self) -> typing.Optional[builtins.int]:
+        r"""
+        Optional episode seed used when constructing the initial game state.
+        This controls the first episode's RNG, but `GameState.reset()` does
+        not consult it unless a caller explicitly passes that seed back in.
+        """
     @episode_seed.setter
-    def episode_seed(self, value: typing.Optional[builtins.int]) -> None: ...
+    def episode_seed(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Optional episode seed used when constructing the initial game state.
+        This controls the first episode's RNG, but `GameState.reset()` does
+        not consult it unless a caller explicitly passes that seed back in.
+        """
     @property
     def debug(self) -> builtins.bool: ...
     @debug.setter
@@ -153,13 +182,17 @@ class GGConfig:
     @ghost_policy.setter
     def ghost_policy(self, value: typing.Optional[GhostPolicy]) -> None: ...
     @property
-    def transition(self) -> builtins.list[builtins.float]: ...
-    @transition.setter
-    def transition(self, value: builtins.list[builtins.float]) -> None: ...
+    def ghost_penalty(self) -> builtins.int: ...
+    @ghost_penalty.setter
+    def ghost_penalty(self, value: builtins.int) -> None: ...
     @property
     def ghost_occlusion(self) -> builtins.bool: ...
     @ghost_occlusion.setter
     def ghost_occlusion(self, value: builtins.bool) -> None: ...
+    @property
+    def transition(self) -> builtins.list[builtins.float]: ...
+    @transition.setter
+    def transition(self, value: builtins.list[builtins.float]) -> None: ...
     @property
     def scale(self) -> builtins.float: ...
     @scale.setter
@@ -192,61 +225,127 @@ class GGConfig:
     def cell_size(self) -> builtins.float: ...
     @cell_size.setter
     def cell_size(self, value: builtins.float) -> None: ...
-    @property
-    def size(self) -> tuple[builtins.int, builtins.int]:
-        r"""
-        The size of the board as (width, height) — same as
-        `config.world_generation.size`, flattened for convenience. Only
-        reflects the *procedurally-generated* size; when `world_file` is
-        set, read the actual board size from `GameState.board.width/height`
-        instead.
-        """
     def __repr__(self) -> builtins.str: ...
     def __str__(self) -> builtins.str: ...
 
 class GameState:
+    r"""
+    Represents the game state and holds the bulk of the game logic.
+    """
     @property
-    def board(self) -> Board: ...
-    @property
-    def reward(self) -> builtins.int: ...
-    @property
-    def done(self) -> builtins.bool: ...
-    @property
-    def ghost_position(self) -> typing.Optional[tuple[builtins.int, builtins.int]]:
+    def board(self) -> Board:
         r"""
-        The ghost's position as currently observed by the agent: `None` if
-        there's no ghost, or if one exists but isn't currently visible (e.g.
-        behind a wall, when `ghost_occlusion` is enabled); otherwise its real
-        position.
+        Returns the state of the board.
         """
-    def all_states(self) -> builtins.list[GameState]: ...
-    def next_state(self, action:Action) -> GameState: ...
-    def with_seed(self, seed:builtins.int) -> GameState: ...
-    def step(self, action:Action) -> GameState: ...
-    def reset(self) -> tuple[GameState, builtins.int]: ...
+    @property
+    def reward(self) -> builtins.int:
+        r"""
+        Represents the immediate reward of the current state. Equals the
+        configured ghost penalty if the agent has been caught by the ghost,
+        the value of a goblet if the agent has found a goblet, and zero
+        otherwise.
+        """
+    @property
+    def done(self) -> builtins.bool:
+        r"""
+        Returns True if the agent has collected a goblet or has been caught
+        by the ghost.
+        """
+    @property
+    def agent_position(self) -> tuple[builtins.int, builtins.int]:
+        r"""
+        Returns the current position of the agent.
+        """
+    @property
+    def observed_ghost_position(self) -> typing.Optional[tuple[builtins.int, builtins.int]]:
+        r"""
+        Returns the position of the ghost as observed by the agent. If there is
+        no ghost, or if the ghost isn't currently visible (e.g., behind a wall)
+        when `ghost_occlusion` is enabled, returns None. Invalid states (e.g.,
+        where the ghost is inside a wall) are also treated as hidden.
+        """
+    @property
+    def visible_goblet_positions(self) -> builtins.list[tuple[builtins.int, builtins.int]]:
+        r"""
+        Returns the positions of goblets visible from the agent's current
+        position. Goblets hidden behind walls are omitted.
+        """
+    @property
+    def visible_wall_positions(self) -> builtins.list[tuple[builtins.int, builtins.int]]:
+        r"""
+        Returns the positions of walls visible from the agent's current
+        position. A wall is visible if no other wall lies between the agent
+        and that wall.
+        """
+    @property
+    def episode_seed(self) -> builtins.int:
+        r"""
+        Returns the episode seed driving this state's RNG.
+        """
+    def all_states(self) -> builtins.list[GameState]:
+        r"""
+        Returns a list of `width * height` game states where the agent's
+        position is varied across all cells. Note that invalid states are not
+        filtered out.
+        """
+    def next_state(self, action:Action) -> GameState:
+        r"""
+        Returns the game state that would result from the agent moving in the
+        given direction. This move is deterministic, and does not update the
+        ghost's position.
+        """
+    def step(self, action:Action) -> GameState:
+        r"""
+        Returns a new game state resulting from one full environment step.
+        This step is not deterministic, and updates both the agent and the
+        ghost's position using the episode seed. Fails for the Teleop ghost.
+        """
+    def with_seed(self, seed:builtins.int) -> GameState:
+        r"""
+        Returns a copy of the current game state with a fixed episode seed,
+        used to determine the actions taken by the agent and the ghost.
+        """
+    def reset(self, seed:typing.Optional[builtins.int]=None) -> tuple[GameState, builtins.int]:
+        r"""
+        Returns a new game state set to the original configuration, along with
+        the episode seed it uses. When `seed` is None, a fresh seed is sampled.
+        """
     def __repr__(self) -> builtins.str: ...
     def __str__(self) -> builtins.str: ...
 
 class Goblet:
+    r"""
+    Represents the state of a single goblet.
+    """
     @property
     def position(self) -> tuple[builtins.int, builtins.int]: ...
     @property
     def reward(self) -> builtins.int: ...
 
 class GobletConfig:
+    r"""
+    Stores the configuration of all goblets.
+    """
     @property
-    def number(self) -> builtins.int: ...
+    def number(self) -> builtins.int:
+        r"""
+        Returns the initial number of goblets.
+        """
     @number.setter
     def number(self, value: builtins.int) -> None: ...
     @property
-    def max_reward(self) -> builtins.int: ...
+    def max_reward(self) -> builtins.int:
+        r"""
+        Returns the maximum reward of any goblet.
+        """
     @max_reward.setter
     def max_reward(self, value: builtins.int) -> None: ...
+    def __repr__(self) -> builtins.str: ...
+    def __str__(self) -> builtins.str: ...
 
 class WorldGenerationConfig:
     r"""
-    Procedural world-generation parameters. Ignored (except `cell_size`, which
-    still controls rendering scale) when `GGConfig.world_file` is set.
+    Stores the configuration of the gridworld.
     """
     @property
     def world_width(self) -> builtins.float: ...
@@ -257,11 +356,17 @@ class WorldGenerationConfig:
     @world_height.setter
     def world_height(self, value: builtins.float) -> None: ...
     @property
-    def num_obstacles(self) -> builtins.int: ...
+    def num_obstacles(self) -> builtins.int:
+        r"""
+        Returns the initial number of obstacles.
+        """
     @num_obstacles.setter
     def num_obstacles(self, value: builtins.int) -> None: ...
     @property
-    def obstacle_radius_cells(self) -> builtins.int: ...
+    def obstacle_radius_cells(self) -> builtins.int:
+        r"""
+        Returns the maximum radius of an obstacle in number of cells.
+        """
     @obstacle_radius_cells.setter
     def obstacle_radius_cells(self, value: builtins.int) -> None: ...
     @property
@@ -271,12 +376,15 @@ class WorldGenerationConfig:
     @property
     def size(self) -> tuple[builtins.int, builtins.int]:
         r"""
-        Returns the size of the maze as (width, height)
+        Returns the size of the world as a (width, height) tuple.
         """
     def __repr__(self) -> builtins.str: ...
     def __str__(self) -> builtins.str: ...
 
 class Action(Enum):
+    r"""
+    Represents an agent action.
+    """
     Up = ...
     Down = ...
     Left = ...
@@ -287,6 +395,9 @@ class Action(Enum):
     def __reduce__(self) -> tuple[typing.Any, typing.Any]: ...
 
 class GhostPolicy(Enum):
+    r"""
+    Represents a policy for the ghost.
+    """
     Random = ...
     Chaser = ...
     Teleop = ...

@@ -18,6 +18,7 @@ impl Plugin for GobletPlugin {
             Startup,
             (systems::spawn_goblets).in_set(StartupSets::Goblets),
         );
+        app.add_systems(Update, systems::update_goblet_reward_labels);
     }
 }
 

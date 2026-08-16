@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 
 use crate::coords::world_dimensions;
-use crate::resources::{ConfigResource, GameStateResource};
-use crate::scene::{GroundPlane, RewardText, WALL_HEIGHT, WallBundle, WallGraphicsAssets};
+use crate::resources::{ConfigResource, GameStateResource, HeatmapResource};
+use crate::scene::{
+    EpisodeSeedText, GroundPlane, RenderMeshAssets, RewardText, WallBundle, WallGraphicsAssets,
+};
 
 /// Spawns the upper-right HUD panel: generation seed (or the world file
 /// path, if one was supplied — a procedural seed wouldn't mean anything for
@@ -13,9 +15,12 @@ pub fn setup_key_instructions(
     mut commands: Commands,
     config: Res<ConfigResource>,
     state: Res<GameStateResource>,
+    heatmap: Res<HeatmapResource>,
 ) {
     let config = &config.0;
     let is_teleop = config.agent.ghost_policy == Some(gg_core::GhostPolicy::Teleop);
+    let has_value_heatmap = heatmap.0.is_some();
+    let ghost_occlusion_enabled = config.agent.ghost_occlusion;
 
     let generation_line = match &config.world_file {
         Some(path) => format!("World: {}", path),
@@ -26,9 +31,7 @@ pub fn setup_key_instructions(
                 .expect("Should have generated a generation seed before spawning the HUD")
         ),
     };
-    let episode_seed = config
-        .episode_seed
-        .expect("Should have generated an episode seed before spawning the HUD");
+    let episode_seed = state.0.rng_seed;
 
     commands
         .spawn((
@@ -60,6 +63,7 @@ pub fn setup_key_instructions(
                     ..default()
                 },
                 TextLayout::new_with_justify(Justify::Right),
+                EpisodeSeedText,
             ));
             parent.spawn((
                 Text::new(format!("Reward: {}", state.0.reward)),
@@ -70,8 +74,12 @@ pub fn setup_key_instructions(
                 TextLayout::new_with_justify(Justify::Right),
                 RewardText,
             ));
+            parent.spawn(Node {
+                height: Val::Px(14.0),
+                ..default()
+            });
             parent.spawn((
-                Text::new("+/-: Zoom In/Out | Shift+Click Drag: Pan Camera"),
+                Text::new("+/-: Zoom In/Out"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
@@ -79,35 +87,28 @@ pub fn setup_key_instructions(
                 TextLayout::new_with_justify(Justify::Right),
             ));
             parent.spawn((
-                Text::new("P: Toggle Policy Visualization"),
+                Text::new("Shift+Drag: Pan Camera"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
                 },
                 TextLayout::new_with_justify(Justify::Right),
             ));
-            parent.spawn((
-                Text::new("V: Toggle Value Heatmap"),
-                TextFont {
-                    font_size: 14.0,
-                    ..default()
-                },
-                TextLayout::new_with_justify(Justify::Right),
-            ));
-            parent.spawn((
-                Text::new("F: Toggle Agent Visibility Overlay"),
-                TextFont {
-                    font_size: 14.0,
-                    ..default()
-                },
-                TextLayout::new_with_justify(Justify::Right),
-            ));
-
+            parent.spawn(Node {
+                height: Val::Px(14.0),
+                ..default()
+            });
             if is_teleop {
                 parent.spawn((
-                    Text::new(
-                        "Arrows/WASD: Move Ghost | Space: Ghost Stays (advances one step)",
-                    ),
+                    Text::new("Arrows/WASD: Move Ghost"),
+                    TextFont {
+                        font_size: 14.0,
+                        ..default()
+                    },
+                    TextLayout::new_with_justify(Justify::Right),
+                ));
+                parent.spawn((
+                    Text::new("Space: Ghost Stays"),
                     TextFont {
                         font_size: 14.0,
                         ..default()
@@ -123,7 +124,101 @@ pub fn setup_key_instructions(
                     },
                     TextLayout::new_with_justify(Justify::Right),
                 ));
+                parent.spawn((
+                    Text::new("[/]: Change Speed"),
+                    TextFont {
+                        font_size: 14.0,
+                        ..default()
+                    },
+                    TextLayout::new_with_justify(Justify::Right),
+                ));
             }
+            parent.spawn(Node {
+                height: Val::Px(14.0),
+                ..default()
+            });
+            parent.spawn((
+                Text::new("P: Toggle Policy Visualization"),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextLayout::new_with_justify(Justify::Right),
+            ));
+            parent.spawn((
+                Text::new("V: Toggle Value Heatmap"),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(if has_value_heatmap {
+                    Color::WHITE
+                } else {
+                    Color::srgb(0.7, 0.7, 0.7)
+                }),
+                TextLayout::new_with_justify(Justify::Right),
+            ));
+            parent
+                .spawn(Node {
+                    display: Display::Flex,
+                    justify_content: JustifyContent::FlexEnd,
+                    align_items: AlignItems::Center,
+                    column_gap: Val::Px(6.0),
+                    ..default()
+                })
+                .with_children(|legend| {
+                    let label_font = TextFont {
+                        font_size: 11.0,
+                        ..default()
+                    };
+                    legend.spawn((
+                        Text::new("negative"),
+                        label_font.clone(),
+                        TextColor(Color::srgb(0.267, 0.005, 0.329)),
+                    ));
+                    legend.spawn((
+                        Text::new("zero"),
+                        label_font.clone(),
+                        TextColor(Color::srgb(0.129, 0.567, 0.551)),
+                    ));
+                    legend.spawn((
+                        Text::new("positive"),
+                        label_font,
+                        TextColor(Color::srgb(0.993, 0.906, 0.144)),
+                    ));
+                });
+            parent.spawn((
+                Text::new("O: Toggle Visibility Overlay"),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextLayout::new_with_justify(Justify::Right),
+            ));
+            parent
+                .spawn(Node {
+                    display: Display::Flex,
+                    justify_content: JustifyContent::FlexEnd,
+                    align_items: AlignItems::Center,
+                    column_gap: Val::Px(6.0),
+                    ..default()
+                })
+                .with_children(|status| {
+                    let label_font = TextFont {
+                        font_size: 11.0,
+                        ..default()
+                    };
+                    status.spawn((Text::new("ghost occlusion"), label_font.clone()));
+                    status.spawn((
+                        Text::new(if ghost_occlusion_enabled { "on" } else { "off" }),
+                        label_font,
+                        TextColor(if ghost_occlusion_enabled {
+                            Color::srgb(0.4, 0.8, 0.4)
+                        } else {
+                            Color::srgb(0.8, 0.4, 0.4)
+                        }),
+                    ));
+                });
         });
 }
 
@@ -151,14 +246,17 @@ pub fn setup_scene(
     }
 }
 
-/// Keeps the HUD's "Reward: ..." line current — the only line in that panel
-/// that changes after Startup (seeds/world path are fixed for the session).
-pub fn update_reward_text(
+/// Keeps the HUD's episode-seed and reward lines current.
+pub fn update_hud_text(
     state: Res<GameStateResource>,
-    mut query: Query<&mut Text, With<RewardText>>,
+    mut reward_query: Query<&mut Text, (With<RewardText>, Without<EpisodeSeedText>)>,
+    mut seed_query: Query<&mut Text, (With<EpisodeSeedText>, Without<RewardText>)>,
 ) {
-    for mut text in &mut query {
+    for mut text in &mut reward_query {
         text.0 = format!("Reward: {}", state.0.reward);
+    }
+    for mut text in &mut seed_query {
+        text.0 = format!("Episode Seed: {}", state.0.rng_seed);
     }
 }
 
@@ -167,7 +265,7 @@ pub fn update_reward_text(
 /// `build_app` is called, whether procedurally or from a loaded world file).
 pub fn spawn_walls(
     mut commands: Commands,
-    mut meshes: Option<ResMut<Assets<Mesh>>>,
+    meshes: Option<Res<RenderMeshAssets>>,
     graphics: Option<Res<WallGraphicsAssets>>,
     config: Res<ConfigResource>,
     state: Res<GameStateResource>,
@@ -187,10 +285,11 @@ pub fn spawn_walls(
 
             let mut entity = commands.spawn(WallBundle::new(p0.into(), p0.into()));
 
-            if let (Some(meshes), Some(graphics)) = (&mut meshes, &graphics) {
-                // Square footprint the size of a cell; height = WALL_HEIGHT
-                let mesh = meshes.add(Cuboid::new(cell, WALL_HEIGHT, cell));
-                entity.insert((Mesh3d(mesh), MeshMaterial3d(graphics.material.clone())));
+            if let (Some(meshes), Some(graphics)) = (&meshes, &graphics) {
+                entity.insert((
+                    Mesh3d(meshes.wall.clone()),
+                    MeshMaterial3d(graphics.material.clone()),
+                ));
             }
         }
     }

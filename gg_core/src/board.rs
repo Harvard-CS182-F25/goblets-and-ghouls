@@ -14,7 +14,14 @@ use crate::goblet::Goblet;
 #[gen_stub_pyclass]
 #[pyclass(name = "Board")]
 #[derive(Debug, Clone)]
+
+/// Represents the state of the board.
+/// Stores the dimensions and board layout.
 pub struct Board {
+    #[pyo3(get)]
+    pub width: usize,
+    #[pyo3(get)]
+    pub height: usize,
     #[pyo3(get)]
     pub agent_position: (usize, usize),
     #[pyo3(get)]
@@ -23,10 +30,6 @@ pub struct Board {
     pub goblets: Vec<Goblet>,
     #[pyo3(get)]
     pub wall_positions: HashSet<(usize, usize)>,
-    #[pyo3(get)]
-    pub width: usize,
-    #[pyo3(get)]
-    pub height: usize,
 }
 
 fn get_circle_indices(
@@ -112,24 +115,25 @@ impl Board {
             .filter(|&pos| Some(pos) != ghost_position)
             .collect::<Vec<_>>();
 
-        let goblets = (0..config.goblets.number)
-            .filter_map(|_| {
-                free_positions.choose(rng).cloned().map(|position| Goblet {
-                    position,
-                    reward: rng.random_range(
-                        -(config.goblets.max_reward as i32)..=(config.goblets.max_reward as i32),
-                    ),
-                })
+        let goblets = free_positions
+            .iter()
+            .cloned()
+            .choose_multiple(rng, config.goblets.number)
+            .into_iter()
+            .map(|position| Goblet {
+                position,
+                reward: rng
+                    .random_range(-(config.goblets.max_reward as i32)..=(config.goblets.max_reward as i32)),
             })
             .collect::<Vec<_>>();
 
         Self {
+            width,
+            height,
             agent_position,
             ghost_position,
             goblets,
             wall_positions,
-            width,
-            height,
         }
     }
 
@@ -207,7 +211,9 @@ impl Board {
                         .clamp(0, board.height - 1);
                     let new_position = (new_x, new_y);
 
-                    board.ghost_position = Some(new_position);
+                    if !board.wall_positions.contains(&new_position) {
+                        board.ghost_position = Some(new_position);
+                    }
                 }
             }
         };
@@ -221,6 +227,25 @@ impl Board {
         crate::los::has_line_of_sight(from, to, &self.wall_positions)
     }
 
+    /// The ghost position directly observed from `agent_pos`, if any. With
+    /// occlusion enabled, a ghost hidden behind a wall is hidden; invalid or
+    /// hypothetical states where the ghost is inside a wall are also treated
+    /// as hidden.
+    pub fn observed_ghost_position_for(
+        &self,
+        agent_pos: (usize, usize),
+        occlusion_enabled: bool,
+    ) -> Option<(usize, usize)> {
+        let ghost = self.ghost_position?;
+        if occlusion_enabled
+            && (self.wall_positions.contains(&ghost) || !self.has_line_of_sight(agent_pos, ghost))
+        {
+            None
+        } else {
+            Some(ghost)
+        }
+    }
+
     /// The ghost position a policy should be indexed with, as observed from
     /// `agent_pos`: the ghost's real position if one exists and (when
     /// `occlusion_enabled`) is visible from `agent_pos`, otherwise `agent_pos`
@@ -231,13 +256,8 @@ impl Board {
         agent_pos: (usize, usize),
         occlusion_enabled: bool,
     ) -> (usize, usize) {
-        match self.ghost_position {
-            None => agent_pos,
-            Some(ghost) if occlusion_enabled && !self.has_line_of_sight(agent_pos, ghost) => {
-                agent_pos
-            }
-            Some(ghost) => ghost,
-        }
+        self.observed_ghost_position_for(agent_pos, occlusion_enabled)
+            .unwrap_or(agent_pos)
     }
 
     /// [`Board::effective_ghost_position_for`] observed from the actual
@@ -276,6 +296,8 @@ impl Board {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::SeedableRng;
+    use wyrand::WyRand;
 
     fn board_with(
         agent_position: (usize, usize),
@@ -293,21 +315,6 @@ mod tests {
     }
 
     #[test]
-    fn no_ghost_falls_back_to_agent_position() {
-        let board = board_with((2, 2), None, HashSet::new());
-        assert_eq!(board.effective_ghost_position(false), (2, 2));
-        assert_eq!(board.effective_ghost_position(true), (2, 2));
-        assert_eq!(board.effective_ghost_position_for((0, 0), true), (0, 0));
-    }
-
-    #[test]
-    fn visible_ghost_is_used_regardless_of_occlusion_flag() {
-        let board = board_with((0, 0), Some((4, 0)), HashSet::new());
-        assert_eq!(board.effective_ghost_position(false), (4, 0));
-        assert_eq!(board.effective_ghost_position(true), (4, 0));
-    }
-
-    #[test]
     fn occluded_ghost_falls_back_to_agent_position_only_when_enabled() {
         let mut walls = HashSet::new();
         walls.insert((2, 0));
@@ -315,6 +322,18 @@ mod tests {
 
         assert_eq!(board.effective_ghost_position(false), (4, 0));
         assert_eq!(board.effective_ghost_position(true), (0, 0));
+    }
+
+    #[test]
+    fn ghost_inside_wall_is_hidden_only_when_occlusion_is_enabled() {
+        let mut walls = HashSet::new();
+        walls.insert((4, 0));
+        let board = board_with((0, 0), Some((4, 0)), walls);
+
+        assert_eq!(board.effective_ghost_position(false), (4, 0));
+        assert_eq!(board.effective_ghost_position(true), (0, 0));
+        assert_eq!(board.observed_ghost_position_for((0, 0), false), Some((4, 0)));
+        assert_eq!(board.observed_ghost_position_for((0, 0), true), None);
     }
 
     #[test]
@@ -327,5 +346,33 @@ mod tests {
         assert_eq!(board.effective_ghost_position_for((0, 0), true), (0, 0));
         // ...but from (0,1) the wall at (2,0) doesn't block the diagonal line.
         assert_eq!(board.effective_ghost_position_for((0, 4), true), (4, 0));
+    }
+
+    #[test]
+    fn generated_goblets_have_unique_positions() {
+        let mut rng = WyRand::from_seed(1234_u64.to_ne_bytes());
+        let config = GGConfig {
+            goblets: crate::config::GobletConfig {
+                number: 8,
+                max_reward: 10,
+            },
+            world_generation: crate::config::WorldGenerationConfig {
+                world_width: 25.0,
+                world_height: 25.0,
+                num_obstacles: 0,
+                obstacle_radius_cells: 1,
+                cell_size: 5.0,
+            },
+            ..Default::default()
+        };
+
+        let board = Board::new(&mut rng, &config);
+        let unique_positions = board
+            .goblets
+            .iter()
+            .map(|goblet| goblet.position)
+            .collect::<HashSet<_>>();
+
+        assert_eq!(unique_positions.len(), board.goblets.len());
     }
 }

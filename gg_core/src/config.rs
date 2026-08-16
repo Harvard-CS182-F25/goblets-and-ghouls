@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 #[gen_stub_pyclass_enum]
 #[pyclass]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+
+/// Represents a policy for the ghost.
 pub enum GhostPolicy {
     Random,
     Chaser,
@@ -21,26 +23,83 @@ pub enum GhostPolicy {
 #[derive(Debug, Clone, Derivative, Serialize, Deserialize)]
 #[derivative(Default)]
 #[serde(default)]
+/// Stores the configuration of the agent and the ghost, if there is one.
 pub struct AgentConfig {
-    #[pyo3(get, set)]
     #[derivative(Default(value = "\"Agent\".to_string()"))]
     pub name: String,
 
-    #[pyo3(get, set)]
     pub ghost_policy: Option<GhostPolicy>,
 
-    #[pyo3(get, set)]
-    pub transition: [f32; 4],
+    #[derivative(Default(value = "-100"))]
+    pub ghost_penalty: i32,
 
-    /// When true, a ghost hidden behind a wall (no line of sight from the
-    /// agent) is treated as if it were at the agent's own position for
-    /// policy-lookup purposes, the same convention used when no ghost exists.
-    #[pyo3(get, set)]
     pub ghost_occlusion: bool,
+
+    pub transition: [f32; 4],
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl AgentConfig {
+    /// Returns the name of the agent.
+    #[getter]
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    #[setter]
+    fn set_name(&mut self, value: String) {
+        self.name = value;
+    }
+
+    /// Returns the ghost's policy, if there is one.
+    #[getter]
+    fn ghost_policy(&self) -> Option<GhostPolicy> {
+        self.ghost_policy.clone()
+    }
+
+    #[setter]
+    fn set_ghost_policy(&mut self, value: Option<GhostPolicy>) {
+        self.ghost_policy = value;
+    }
+
+    /// Returns the reward applied when the ghost catches the agent.
+    #[getter]
+    fn ghost_penalty(&self) -> i32 {
+        self.ghost_penalty
+    }
+
+    #[setter]
+    fn set_ghost_penalty(&mut self, value: i32) {
+        self.ghost_penalty = value;
+    }
+
+    /// When true, a ghost hidden behind a wall (i.e., with no line of sight
+    /// from the agent) is not observed for policy look-up purposes. Defaults
+    /// to false. Invalid or hypothetical states where the ghost is inside a
+    /// wall are also treated as hidden.
+    #[getter]
+    fn ghost_occlusion(&self) -> bool {
+        self.ghost_occlusion
+    }
+
+    #[setter]
+    fn set_ghost_occlusion(&mut self, value: bool) {
+        self.ghost_occlusion = value;
+    }
+
+    /// Returns the probabilities that the agent's actual action are
+    /// [intended, right, back, left]. Entries must be nonnegative and sum to 1.
+    #[getter]
+    fn transition(&self) -> [f32; 4] {
+        self.transition
+    }
+
+    #[setter]
+    fn set_transition(&mut self, value: [f32; 4]) {
+        self.transition = value;
+    }
+
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("AgentConfig({})", self.__str__()?))
     }
@@ -61,13 +120,23 @@ impl AgentConfig {
 #[derivative(Default)]
 #[serde(default)]
 pub struct CameraConfig {
-    #[pyo3(get, set)]
     #[derivative(Default(value = "-0.15"))]
     pub scale: f32,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl CameraConfig {
+    #[getter]
+    fn scale(&self) -> f32 {
+        self.scale
+    }
+
+    #[setter]
+    fn set_scale(&mut self, value: f32) {
+        self.scale = value;
+    }
+
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("CameraConfig({})", self.__str__()?))
     }
@@ -87,18 +156,40 @@ impl CameraConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
 #[serde(default)]
+/// Stores the configuration of all goblets.
 pub struct GobletConfig {
-    #[pyo3(get, set)]
     #[derivative(Default(value = "1"))]
     pub number: usize,
 
-    #[pyo3(get, set)]
     #[derivative(Default(value = "10"))]
     pub max_reward: u32,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl GobletConfig {
+    /// Returns the initial number of goblets.
+    #[getter]
+    fn number(&self) -> usize {
+        self.number
+    }
+
+    #[setter]
+    fn set_number(&mut self, value: usize) {
+        self.number = value;
+    }
+
+    /// Returns the maximum reward of any goblet.
+    #[getter]
+    fn max_reward(&self) -> u32 {
+        self.max_reward
+    }
+
+    #[setter]
+    fn set_max_reward(&mut self, value: u32) {
+        self.max_reward = value;
+    }
+
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("GobletConfig({})", self.__str__()?))
     }
@@ -113,27 +204,21 @@ impl GobletConfig {
     }
 }
 
-/// Procedural world-generation parameters. Ignored (except `cell_size`, which
-/// still controls rendering scale) when `GGConfig.world_file` is set.
 #[gen_stub_pyclass]
 #[pyclass(name = "WorldGenerationConfig")]
 #[derive(Debug, Clone, Derivative, Serialize, Deserialize)]
 #[derivative(Default)]
 #[serde(default)]
+/// Stores the configuration of the gridworld.
 pub struct WorldGenerationConfig {
-    #[pyo3(get, set)]
     #[derivative(Default(value = "100.0"))]
     pub world_width: f32,
-    #[pyo3(get, set)]
     #[derivative(Default(value = "100.0"))]
     pub world_height: f32,
-    #[pyo3(get, set)]
     #[derivative(Default(value = "5"))]
     pub num_obstacles: usize,
-    #[pyo3(get, set)]
     #[derivative(Default(value = "3"))]
     pub obstacle_radius_cells: usize,
-    #[pyo3(get, set)]
     #[derivative(Default(value = "5.0"))]
     pub cell_size: f32,
 }
@@ -141,7 +226,59 @@ pub struct WorldGenerationConfig {
 #[gen_stub_pymethods]
 #[pymethods]
 impl WorldGenerationConfig {
-    /// Returns the size of the maze as (width, height)
+    #[getter]
+    fn world_width(&self) -> f32 {
+        self.world_width
+    }
+
+    #[setter]
+    fn set_world_width(&mut self, value: f32) {
+        self.world_width = value;
+    }
+
+    #[getter]
+    fn world_height(&self) -> f32 {
+        self.world_height
+    }
+
+    #[setter]
+    fn set_world_height(&mut self, value: f32) {
+        self.world_height = value;
+    }
+
+    /// Returns the initial number of obstacles.
+    #[getter]
+    fn num_obstacles(&self) -> usize {
+        self.num_obstacles
+    }
+
+    #[setter]
+    fn set_num_obstacles(&mut self, value: usize) {
+        self.num_obstacles = value;
+    }
+
+    /// Returns the maximum radius of an obstacle in number of cells.
+    #[getter]
+    fn obstacle_radius_cells(&self) -> usize {
+        self.obstacle_radius_cells
+    }
+
+    #[setter]
+    fn set_obstacle_radius_cells(&mut self, value: usize) {
+        self.obstacle_radius_cells = value;
+    }
+
+    #[getter]
+    fn cell_size(&self) -> f32 {
+        self.cell_size
+    }
+
+    #[setter]
+    fn set_cell_size(&mut self, value: f32) {
+        self.cell_size = value;
+    }
+
+    /// Returns the size of the world as a (width, height) tuple.
     #[getter]
     fn size(&self) -> (usize, usize) {
         (
@@ -169,20 +306,24 @@ impl WorldGenerationConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
 #[serde(default)]
+/// Represents the entire configuration of the game.
 pub struct GGConfig {
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub agent: AgentConfig,
-    #[pyo3(get, set)]
-    pub camera: CameraConfig,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub goblets: GobletConfig,
-    #[pyo3(get, set)]
+    #[pyo3(get)]
     pub world_generation: WorldGenerationConfig,
+    #[pyo3(get)]
+    pub camera: CameraConfig,
     #[pyo3(get, set)]
     #[derivative(Default(value = "1.0"))]
     pub render_delay_secs: f32,
     #[pyo3(get, set)]
     pub generation_seed: Option<u32>,
+    /// Optional episode seed used when constructing the initial game state.
+    /// This controls the first episode's RNG, but `GameState.reset()` does
+    /// not consult it unless a caller explicitly passes that seed back in.
     #[pyo3(get, set)]
     pub episode_seed: Option<u32>,
     #[pyo3(get, set)]
@@ -207,8 +348,8 @@ pub struct GGConfig {
 // breaking `gg_core`'s use as a standalone engine), the nested leaf fields
 // people actually script against are flattened directly onto `GGConfig` —
 // e.g. `config.ghost_occlusion = False` is a real one-line mutation.
-// `config.agent.ghost_occlusion = False` remains silently ineffective; use
-// the flattened form (or reassign the whole `agent` object) instead.
+// The nested config objects are exposed read-only; mutate via the flattened
+// form instead.
 #[gen_stub_pymethods]
 #[pymethods]
 impl GGConfig {
@@ -230,13 +371,13 @@ impl GGConfig {
         self.agent.ghost_policy = value;
     }
 
-    #[getter(transition)]
-    fn get_transition(&self) -> [f32; 4] {
-        self.agent.transition
+    #[getter(ghost_penalty)]
+    fn get_ghost_penalty(&self) -> i32 {
+        self.agent.ghost_penalty
     }
-    #[setter(transition)]
-    fn set_transition(&mut self, value: [f32; 4]) {
-        self.agent.transition = value;
+    #[setter(ghost_penalty)]
+    fn set_ghost_penalty(&mut self, value: i32) {
+        self.agent.ghost_penalty = value;
     }
 
     #[getter(ghost_occlusion)]
@@ -246,6 +387,15 @@ impl GGConfig {
     #[setter(ghost_occlusion)]
     fn set_ghost_occlusion(&mut self, value: bool) {
         self.agent.ghost_occlusion = value;
+    }
+
+    #[getter(transition)]
+    fn get_transition(&self) -> [f32; 4] {
+        self.agent.transition
+    }
+    #[setter(transition)]
+    fn set_transition(&mut self, value: [f32; 4]) {
+        self.agent.transition = value;
     }
 
     #[getter(scale)]
@@ -318,16 +468,6 @@ impl GGConfig {
     #[setter(cell_size)]
     fn set_cell_size(&mut self, value: f32) {
         self.world_generation.cell_size = value;
-    }
-
-    /// The size of the board as (width, height) — same as
-    /// `config.world_generation.size`, flattened for convenience. Only
-    /// reflects the *procedurally-generated* size; when `world_file` is
-    /// set, read the actual board size from `GameState.board.width/height`
-    /// instead.
-    #[getter(size)]
-    fn get_size(&self) -> (usize, usize) {
-        self.world_generation.size()
     }
 
     fn __repr__(&self) -> PyResult<String> {

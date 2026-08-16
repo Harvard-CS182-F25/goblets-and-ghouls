@@ -1,5 +1,14 @@
 use bevy::prelude::*;
 
+/// Meshes shared by all game entities of the same kind.
+#[derive(Resource)]
+pub struct RenderMeshAssets {
+    pub wall: Handle<Mesh>,
+    pub agent: Handle<Mesh>,
+    pub ghost: Handle<Mesh>,
+    pub goblet: Handle<Mesh>,
+}
+
 #[derive(Resource)]
 pub struct WallGraphicsAssets {
     pub material: Handle<StandardMaterial>,

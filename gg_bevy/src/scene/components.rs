@@ -10,9 +10,14 @@ pub struct Wall;
 #[reflect(Component)]
 pub struct GroundPlane;
 
-/// Marks the reward line in the upper-right HUD panel so `update_reward_text`
-/// can find and refresh it every frame (the only line in that panel that
-/// changes after Startup — seeds/world path are fixed for the session).
+/// Marks the episode-seed line in the upper-right HUD panel so
+/// `update_hud_text` can refresh it after a restart.
+#[derive(Debug, Clone, Copy, Default, Component, Reflect)]
+#[reflect(Component)]
+pub struct EpisodeSeedText;
+
+/// Marks the reward line in the upper-right HUD panel so `update_hud_text`
+/// can refresh it every frame.
 #[derive(Debug, Clone, Copy, Default, Component, Reflect)]
 #[reflect(Component)]
 pub struct RewardText;

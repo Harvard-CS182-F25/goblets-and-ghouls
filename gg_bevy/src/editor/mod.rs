@@ -6,11 +6,14 @@ use bevy::input::common_conditions::input_pressed;
 use bevy::prelude::*;
 use gg_core::{Goblet, WorldFile};
 
-use crate::camera::{zoom_in, zoom_out};
+use crate::camera::{CameraZoomLimits, zoom_in, zoom_out};
 
 /// Cell size used purely for the editor's own rendering scale (the editor
 /// isn't tied to a `GGConfig`, unlike the live game).
 pub const CELL_SIZE: f32 = 5.0;
+
+/// Width of the right-side tool panel, shared by the UI, camera, and input.
+pub const PANEL_WIDTH: f32 = 240.0;
 
 // ─── Tile type ────────────────────────────────────────────────────────────────
 
@@ -44,19 +47,21 @@ impl EditorBoard {
 
     /// Load from a `gg_core::WorldFile` YAML world.
     pub fn from_file(path: &str) -> Result<Self, String> {
-        let world = WorldFile::from_file(path).map_err(|e| e.to_string())?;
-        let (width, height) = (world.width, world.height);
+        let board = WorldFile::from_file(path)
+            .and_then(|world| world.into_board())
+            .map_err(|e| e.to_string())?;
+        let (width, height) = (board.width, board.height);
         let mut tiles = vec![vec![EditorTile::Empty; width]; height];
 
-        for &(col, row) in &world.walls {
+        for &(col, row) in &board.wall_positions {
             tiles[row][col] = EditorTile::Wall;
         }
-        for Goblet { position, reward } in &world.goblets {
+        for Goblet { position, reward } in &board.goblets {
             tiles[position.1][position.0] = EditorTile::Goblet(*reward);
         }
-        let (ac, ar) = world.agent_position;
+        let (ac, ar) = board.agent_position;
         tiles[ar][ac] = EditorTile::Agent;
-        if let Some((gc, gr)) = world.ghost_position {
+        if let Some((gc, gr)) = board.ghost_position {
             tiles[gr][gc] = EditorTile::Ghost;
         }
 
@@ -203,6 +208,21 @@ impl EditorState {
     }
 }
 
+/// Shortens absolute paths under the current working directory for display in
+/// the editor's filename box. Relative and external paths are left unchanged.
+fn display_path(path: String) -> String {
+    let path = std::path::Path::new(&path);
+    if !path.is_absolute() {
+        return path.to_string_lossy().into_owned();
+    }
+
+    std::env::current_dir()
+        .ok()
+        .and_then(|cwd| path.strip_prefix(cwd).ok())
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|| path.to_string_lossy().into_owned())
+}
+
 /// Attempts to save `board` to `state.filename` (or a generated default
 /// name), updating `state`'s message/dirty/out_path accordingly. Returns
 /// whether the save succeeded — used to gate whether the exit-confirmation
@@ -255,6 +275,7 @@ impl Plugin for EditorPlugin {
             .out_path
             .clone()
             .or_else(|| self.load_path.clone())
+            .map(display_path)
             .unwrap_or_default();
         let state = EditorState {
             out_path: self.out_path.clone(),
@@ -265,21 +286,29 @@ impl Plugin for EditorPlugin {
         app.insert_resource(self.board.clone());
         app.insert_resource(state);
         app.init_resource::<crate::camera::PanState>();
+        app.init_resource::<CameraZoomLimits>();
 
         app.add_systems(PreStartup, board::init_visual_assets);
         app.add_systems(
             Startup,
-            (board::setup_scene, board::setup_tiles, ui::setup_ui),
+            (
+                board::setup_scene,
+                board::setup_grid,
+                board::setup_tiles,
+                ui::setup_ui,
+            ),
         );
         app.add_systems(
             Update,
             (
                 input::handle_keyboard,
+                input::handle_close_request,
                 input::handle_text_input,
+                input::handle_filename_click,
                 input::handle_mouse,
                 input::handle_exit_dialog_buttons,
                 input::tick_message_timer,
-                board::draw_grid,
+                board::sync_grid_visibility,
                 board::update_goblet_label_positions,
                 ui::sync_ui,
                 ui::sync_dirty_indicator,
@@ -287,6 +316,7 @@ impl Plugin for EditorPlugin {
                 zoom_in.run_if(input_pressed(KeyCode::Equal)),
                 zoom_out.run_if(input_pressed(KeyCode::Minus)),
                 input::pan_camera,
+                crate::camera::update_pan_cursor,
             ),
         );
         app.add_systems(

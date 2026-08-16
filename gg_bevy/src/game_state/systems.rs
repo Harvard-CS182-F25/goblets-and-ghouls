@@ -3,7 +3,7 @@ use gg_core::{Action, EntityType, Goblet};
 
 use crate::coords::{cell_to_world, raycast_to_grid_cell, world_dimensions};
 use crate::resources::{ConfigResource, GameStateResource, HeatmapResource, PolicyResource};
-use crate::scene::GroundPlane;
+use crate::scene::{GroundPlane, WALL_HEIGHT};
 
 use super::components::{
     GameOverOverlay, HeatmapColorRange, HeatmapTile, HoverBox, HoverBoxText, HoverCell,
@@ -150,9 +150,21 @@ pub fn update_hover_box(
         None => String::new(),
     };
 
-    // Independent of ghost_occlusion (which only gates the ghost's own
-    // visibility) — plain agent-to-cell line of sight, same predicate
-    // `update_visibility_overlay` uses for the "F" overlay.
+    let hovered_ghost = game_state.0.board.ghost_position == Some(agent_position);
+    let reward = if hovered_ghost {
+        config.0.agent.ghost_penalty
+    } else if let Some(&Goblet { reward, .. }) = game_state
+        .0
+        .board
+        .goblets
+        .iter()
+        .find(|g| g.position.0 == cell.x as usize && g.position.1 == cell.y as usize)
+    {
+        reward
+    } else {
+        0
+    };
+
     let visible = game_state
         .0
         .board
@@ -165,16 +177,7 @@ pub fn update_hover_box(
         Visible: {}",
         cell.x,
         cell.y,
-        if let Some(&Goblet { reward, .. }) = game_state.0.board.goblets.iter().find(|g| g
-            .position
-            .0
-            == cell.x as usize
-            && g.position.1 == cell.y as usize)
-        {
-            reward
-        } else {
-            0
-        },
+        reward,
         policy_action,
         value_line,
         if visible { "Yes" } else { "No" }
@@ -194,7 +197,7 @@ pub fn thicker_gizmos(mut store: ResMut<GizmoConfigStore>) {
     // relative to the shaft (see `with_tip_length` in `visualize_policy`)
     // to keep the arrowhead crisp.
     let (cfg, _group) = store.config_mut::<DefaultGizmoConfigGroup>();
-    cfg.line.width = 3.0; // thicker than the 2.0 default, not so thick it blobs
+    cfg.line.width = 5.0; // thicker than the 2.0 default, not so thick it blobs
 }
 
 pub fn toggle_policy_visualization(mut visualize_policy: ResMut<VisualizePolicy>) {
@@ -257,7 +260,7 @@ pub fn visualize_policy(
             // relative to `line.width` and reads as a clean "V" rather than
             // a blob — see the root-cause note on `thicker_gizmos`.
             gizmos
-                .arrow(arrow_start, arrow_end, Color::BLACK)
+                .arrow(arrow_start, arrow_end, Color::srgba(0.0, 0.0, 0.0, 0.5))
                 .with_tip_length(arrow_length * 0.3);
         }
     }
@@ -301,7 +304,8 @@ pub fn spawn_heatmap_tiles(
             position.y = 0.51;
 
             let material = materials.add(StandardMaterial {
-                base_color: Color::WHITE,
+                base_color: Color::srgba(1.0, 1.0, 1.0, 0.55),
+                alpha_mode: AlphaMode::Blend,
                 unlit: true,
                 ..default()
             });
@@ -325,34 +329,54 @@ pub fn update_heatmap_color_range(
     mut range: ResMut<HeatmapColorRange>,
 ) {
     range.0 = heatmap.0.as_ref().map(|grid| {
-        let mut min = f32::INFINITY;
-        let mut max = f32::NEG_INFINITY;
+        const HEATMAP_CLAMP_PERCENTILE: f32 = 0.95;
+
+        let mut values = Vec::with_capacity(grid.width * grid.height * grid.width * grid.height);
         for ax in 0..grid.width {
             for ay in 0..grid.height {
                 for gx in 0..grid.width {
                     for gy in 0..grid.height {
-                        let v = grid.get((ax, ay), (gx, gy));
-                        min = min.min(v);
-                        max = max.max(v);
+                        values.push(grid.get((ax, ay), (gx, gy)));
                     }
                 }
             }
         }
-        (min, max)
+
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let mut magnitudes = values.iter().map(|v| v.abs()).collect::<Vec<_>>();
+        magnitudes.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        let idx = ((magnitudes.len().saturating_sub(1)) as f32 * HEATMAP_CLAMP_PERCENTILE).round()
+            as usize;
+        let scale = magnitudes[idx].max(1e-6);
+
+        (-scale, scale)
     });
 }
 
-/// Diverging colormap centered at 0: white at zero, green toward the
-/// magnitude-normalized positive extreme, red toward the negative one.
+/// Viridis-like colormap centered at zero, with negative values mapped into
+/// the lower half and positive values into the upper half. Alpha stays fixed
+/// so the agent/ghost remain readable above it.
 fn value_to_color(value: f32, min: f32, max: f32) -> Color {
+    const VIRIDIS: [(f32, f32, f32); 5] = [
+        (0.267, 0.005, 0.329), // #440154
+        (0.230, 0.322, 0.546), // #3B528B
+        (0.129, 0.567, 0.551), // #21918C
+        (0.369, 0.789, 0.383), // #5EC962
+        (0.993, 0.906, 0.144), // #FDE725
+    ];
+
     let magnitude_scale = min.abs().max(max.abs()).max(1e-6);
-    let t = (value / magnitude_scale).clamp(-1.0, 1.0);
-    if t >= 0.0 {
-        Color::srgb(1.0 - t, 1.0, 1.0 - t)
-    } else {
-        let t = -t;
-        Color::srgb(1.0, 1.0 - t, 1.0 - t)
-    }
+    let t = ((value / magnitude_scale) * 0.5 + 0.5).clamp(0.0, 1.0);
+
+    let scaled = t * (VIRIDIS.len() - 1) as f32;
+    let idx = scaled.floor() as usize;
+    let frac = scaled - idx as f32;
+    let (r0, g0, b0) = VIRIDIS[idx];
+    let (r1, g1, b1) = VIRIDIS[idx.min(VIRIDIS.len() - 2) + 1];
+    let lerp = |a: f32, b: f32| a + (b - a) * frac;
+
+    Color::srgba(lerp(r0, r1), lerp(g0, g1), lerp(b0, b1), 0.4)
 }
 
 pub fn update_heatmap(
@@ -368,7 +392,11 @@ pub fn update_heatmap(
         &mut Visibility,
     )>,
 ) {
+    let refresh_hidden = visualize_value.is_changed() || heatmap.is_changed();
     let Some(grid) = &heatmap.0 else {
+        if !refresh_hidden {
+            return;
+        }
         for (_, _, mut visibility) in &mut query {
             *visibility = Visibility::Hidden;
         }
@@ -376,9 +404,20 @@ pub fn update_heatmap(
     };
 
     if !visualize_value.0 {
+        if !refresh_hidden {
+            return;
+        }
         for (_, _, mut visibility) in &mut query {
             *visibility = Visibility::Hidden;
         }
+        return;
+    }
+
+    if !visualize_value.is_changed()
+        && !heatmap.is_changed()
+        && !range.is_changed()
+        && !game_state.is_changed()
+    {
         return;
     }
 
@@ -400,11 +439,11 @@ pub fn toggle_visibility_overlay(mut visualize_visibility: ResMut<VisualizeVisib
     visualize_visibility.0 = !visualize_visibility.0;
 }
 
-/// Spawns one flat, per-cell tile entity for every non-wall cell — the same
-/// footprint as the heatmap tiles, but layered just above them (y=0.6, still
-/// safely below the y=5.0 arrow overlay) since this overlay darkens
-/// whatever's beneath it. Hidden by default; `update_visibility_overlay`
-/// toggles and darkens tiles the agent currently can't see.
+/// Spawns one flat, per-cell tile entity for every cell. Floor cells sit
+/// just above the ground plane; wall cells sit just above the wall tops so
+/// the visibility overlay covers the whole board consistently. Hidden by
+/// default; `update_visibility_overlay` toggles and darkens tiles the agent
+/// currently can't see.
 pub fn spawn_visibility_tiles(
     mut commands: Commands,
     meshes: Option<ResMut<Assets<Mesh>>>,
@@ -421,27 +460,26 @@ pub fn spawn_visibility_tiles(
     let (world_width, world_height) = world_dimensions(board.width, board.height, cell_size);
 
     let mesh = meshes.add(Cuboid::new(cell_size * 0.95, 0.05, cell_size * 0.95));
+    let material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.0, 0.0, 0.0, 0.55),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    });
 
     for col in 0..board.width {
         for row in 0..board.height {
-            if board.wall_positions.contains(&(col, row)) {
-                continue;
-            }
-
             let mut position = cell_to_world((col, row), cell_size, world_width, world_height, 0.0);
-            position.y = 0.6;
-
-            let material = materials.add(StandardMaterial {
-                base_color: Color::srgba(0.0, 0.0, 0.0, 0.55),
-                alpha_mode: AlphaMode::Blend,
-                unlit: true,
-                ..default()
-            });
+            position.y = if board.wall_positions.contains(&(col, row)) {
+                WALL_HEIGHT + 0.1
+            } else {
+                0.6
+            };
 
             commands.spawn((
                 VisibilityTile((col, row)),
                 Mesh3d(mesh.clone()),
-                MeshMaterial3d(material),
+                MeshMaterial3d(material.clone()),
                 Transform::from_translation(position),
                 Visibility::Hidden,
             ));
@@ -458,9 +496,16 @@ pub fn update_visibility_overlay(
     mut query: Query<(&VisibilityTile, &mut Visibility)>,
 ) {
     if !visualize_visibility.0 {
+        if !visualize_visibility.is_changed() {
+            return;
+        }
         for (_, mut visibility) in &mut query {
             *visibility = Visibility::Hidden;
         }
+        return;
+    }
+
+    if !visualize_visibility.is_changed() && !game_state.is_changed() {
         return;
     }
 
@@ -479,9 +524,7 @@ pub fn update_visibility_overlay(
 /// Full-screen semi-transparent banner announcing why the episode ended —
 /// mirrors `segmentation`'s `show_winner_overlay` (same layout: centered
 /// 72px text over a 65%-black full-screen `Node`). Spawned once `done`
-/// becomes true; torn down again if the episode ever resets (nothing in
-/// `gg_bevy` currently triggers a reset, but this keeps the system correct
-/// if one is added later).
+/// becomes true; torn down again if the episode resets.
 pub fn show_game_over_overlay(
     mut commands: Commands,
     game_state: Res<GameStateResource>,
@@ -498,15 +541,15 @@ pub fn show_game_over_overlay(
         return;
     }
 
-    let (message, text_color) = if game_state.0.reward == i32::MIN {
+    let (message, text_color) = if game_state.0.board.ghost_position == Some(game_state.0.board.agent_position) {
         ("Caught", Color::srgb(0.85, 0.15, 0.15))
     } else if game_state.0.reward > 0 {
-        ("Escaped with Gold", Color::srgb(0.15, 0.75, 0.15))
+        ("Escaped", Color::srgb(0.15, 0.75, 0.15))
     } else {
-        ("Escaped with Fool's Gold", Color::srgb(0.85, 0.15, 0.15))
+        ("Escaped...?", Color::srgb(0.75, 0.70, 0.50))
     };
 
-    let text = commands
+    let ending_message = commands
         .spawn((
             Text::new(message),
             TextFont {
@@ -517,19 +560,33 @@ pub fn show_game_over_overlay(
         ))
         .id();
 
+    let restart_hint = commands
+        .spawn((
+            Text::new("Space: Restart episode\nN: Restart with new seed"),
+            TextFont {
+                font_size: 24.0,
+                ..default()
+            },
+            TextColor(Color::WHITE),
+            TextLayout::new_with_justify(Justify::Center),
+        ))
+        .id();
+
     commands
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(16.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.65)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.75)),
             GlobalZIndex(10),
             GameOverOverlay,
         ))
-        .add_children(&[text]);
+        .add_children(&[ending_message, restart_hint]);
 }

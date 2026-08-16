@@ -43,7 +43,7 @@ fn run(
     let generation_seed = if let Some(seed) = config.generation_seed {
         seed
     } else {
-        let seed = rand::random::<u16>().into();
+        let seed = rand::random::<u32>();
         config.generation_seed = Some(seed);
         seed
     };
@@ -61,8 +61,6 @@ fn run(
 
     if let Some(episode_seed) = config.episode_seed {
         initial_state = initial_state.with_seed(episode_seed.into());
-    } else {
-        config.episode_seed = Some(initial_state.rng_seed as u32);
     }
 
     let episode_seed = initial_state.rng_seed;
@@ -101,7 +99,8 @@ fn run(
 /// - 4D `(width, height, width, height)`, indexed `[ax, ay, gx, gy]` — a
 ///   genuine ghost-position-dependent policy, matching the axis order a
 ///   Q-table already uses (`q[ax, ay, gx, gy, action]`).
-/// - 2D `(height, width)` — a ghost-free policy (e.g. from Value Iteration),
+/// - 2D `(width, height)`, indexed `[ax, ay]` — a ghost-free policy
+///   (e.g. from Value Iteration),
 ///   broadcast across every ghost slice via [`gg_core::Policy::from_agent_grid`]
 ///   so downstream code can treat both shapes uniformly.
 #[cfg(feature = "bevy")]
@@ -135,22 +134,22 @@ fn numpy_to_policy(py: Python<'_>, policy_any: &Py<PyAny>) -> PyResult<gg_core::
 
     let arr2 = policy_any.cast_bound::<PyArray2<Py<PyAny>>>(py).map_err(|_| {
         PyTypeError::new_err(
-            "Policy must be a 2D (height, width) or 4D (width, height, width, height) numpy.ndarray",
+            "Policy must be a 2D (width, height) or 4D (width, height, width, height) numpy.ndarray",
         )
     })?;
     let array = unsafe { arr2.as_array() };
-    let n_rows = array.shape()[0];
-    let n_cols = array.shape()[1];
-    let mut agent_actions: Vec<Action> = Vec::with_capacity(n_rows * n_cols);
-    for row in 0..n_rows {
-        for col in 0..n_cols {
-            let item = array.get([col, row]).unwrap();
+    let width = array.shape()[0];
+    let height = array.shape()[1];
+    let mut agent_actions: Vec<Action> = Vec::with_capacity(width * height);
+    for ay in 0..height {
+        for ax in 0..width {
+            let item = array.get([ax, ay]).unwrap();
             let action: Action = item.extract(py)?;
             agent_actions.push(action);
         }
     }
 
-    Ok(gg_core::Policy::from_agent_grid(agent_actions, n_cols, n_rows))
+    Ok(gg_core::Policy::from_agent_grid(agent_actions, width, height))
 }
 
 /// Converts an incoming value-function array into a [`gg_core::ValueGrid`].
@@ -185,20 +184,20 @@ fn numpy_to_value_grid(py: Python<'_>, value_any: &Py<PyAny>) -> PyResult<gg_cor
 
     let arr2 = value_any.cast_bound::<PyArray2<f32>>(py).map_err(|_| {
         PyTypeError::new_err(
-            "Value function must be a 2D (height, width) or 4D (width, height, width, height) numpy.ndarray of float32",
+            "Value function must be a 2D (width, height) or 4D (width, height, width, height) numpy.ndarray of float32",
         )
     })?;
     let array = unsafe { arr2.as_array() };
-    let n_rows = array.shape()[0];
-    let n_cols = array.shape()[1];
-    let mut agent_values: Vec<f32> = Vec::with_capacity(n_rows * n_cols);
-    for row in 0..n_rows {
-        for col in 0..n_cols {
-            agent_values.push(array[[col, row]]);
+    let width = array.shape()[0];
+    let height = array.shape()[1];
+    let mut agent_values: Vec<f32> = Vec::with_capacity(width * height);
+    for ay in 0..height {
+        for ax in 0..width {
+            agent_values.push(array[[ax, ay]]);
         }
     }
 
-    Ok(gg_core::ValueGrid::from_agent_grid(agent_values, n_cols, n_rows))
+    Ok(gg_core::ValueGrid::from_agent_grid(agent_values, width, height))
 }
 
 #[pymodule]

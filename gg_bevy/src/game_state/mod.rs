@@ -44,7 +44,7 @@ impl Plugin for GameStatePlugin {
                 systems::update_heatmap,
                 systems::toggle_value_visualization.run_if(input_just_pressed(KeyCode::KeyV)),
                 systems::update_visibility_overlay,
-                systems::toggle_visibility_overlay.run_if(input_just_pressed(KeyCode::KeyF)),
+                systems::toggle_visibility_overlay.run_if(input_just_pressed(KeyCode::KeyO)),
                 systems::show_game_over_overlay,
             )
                 .run_if(|config: Res<ConfigResource>| !config.0.headless),

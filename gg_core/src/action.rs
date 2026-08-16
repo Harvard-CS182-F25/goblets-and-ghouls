@@ -4,6 +4,8 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass_enum, gen_stub_pymethods};
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[gen_stub_pyclass_enum]
 #[pyclass(name = "Action", module = "gg_core._core")]
+
+/// Represents an agent action.
 pub enum Action {
     Up,
     Down,

@@ -10,6 +10,9 @@ pub use visual::*;
 use crate::core::StartupSets;
 use crate::resources::ConfigResource;
 
+pub const AGENT_HEIGHT: f32 = 4.0;
+pub const GHOST_HEIGHT: f32 = 4.0;
+pub const GOBLET_HEIGHT: f32 = 3.0;
 pub const WALL_HEIGHT: f32 = 5.0;
 
 pub struct ScenePlugin;
@@ -31,13 +34,26 @@ impl Plugin for ScenePlugin {
         );
         app.add_systems(
             Update,
-            systems::update_reward_text.run_if(|config: Res<ConfigResource>| !config.0.headless),
+            systems::update_hud_text.run_if(|config: Res<ConfigResource>| !config.0.headless),
         );
     }
 }
 
-fn init_wall_assets(mut commands: Commands, config: Res<ConfigResource>) {
+fn init_wall_assets(
+    mut commands: Commands,
+    mut meshes: Option<ResMut<Assets<Mesh>>>,
+    config: Res<ConfigResource>,
+) {
     if !config.0.headless {
         commands.init_resource::<WallGraphicsAssets>();
+        let cell = config.0.world_generation.cell_size;
+        if let Some(meshes) = &mut meshes {
+            commands.insert_resource(RenderMeshAssets {
+                wall: meshes.add(Cuboid::new(cell, WALL_HEIGHT, cell)),
+                agent: meshes.add(Cuboid::new(cell, AGENT_HEIGHT, cell)),
+                ghost: meshes.add(Cuboid::new(cell, GHOST_HEIGHT, cell)),
+                goblet: meshes.add(Cylinder::new(cell / 2.0, GOBLET_HEIGHT)),
+            });
+        }
     }
 }
