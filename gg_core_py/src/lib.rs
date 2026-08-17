@@ -208,7 +208,6 @@ fn _core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<GGConfig>()?;
     m.add_class::<Action>()?;
     m.add_class::<gg_core::AgentConfig>()?;
-    m.add_class::<gg_core::CameraConfig>()?;
     m.add_class::<GameState>()?;
     m.add_class::<gg_core::EntityType>()?;
     m.add_class::<gg_core::WorldGenerationConfig>()?;

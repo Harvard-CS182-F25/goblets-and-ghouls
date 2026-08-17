@@ -115,43 +115,6 @@ impl AgentConfig {
 }
 
 #[gen_stub_pyclass]
-#[pyclass(name = "CameraConfig")]
-#[derive(Debug, Clone, Derivative, Serialize, Deserialize)]
-#[derivative(Default)]
-#[serde(default)]
-pub struct CameraConfig {
-    #[derivative(Default(value = "-0.15"))]
-    pub scale: f32,
-}
-
-#[gen_stub_pymethods]
-#[pymethods]
-impl CameraConfig {
-    #[getter]
-    fn scale(&self) -> f32 {
-        self.scale
-    }
-
-    #[setter]
-    fn set_scale(&mut self, value: f32) {
-        self.scale = value;
-    }
-
-    fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("CameraConfig({})", self.__str__()?))
-    }
-
-    fn __str__(&self) -> PyResult<String> {
-        serde_json::to_string_pretty(self).map_err(|e| {
-            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "Failed to serialize CameraConfig: {}",
-                e
-            ))
-        })
-    }
-}
-
-#[gen_stub_pyclass]
 #[pyclass(name = "GobletConfig")]
 #[derive(Debug, Clone, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
@@ -314,8 +277,6 @@ pub struct GGConfig {
     pub goblets: GobletConfig,
     #[pyo3(get)]
     pub world_generation: WorldGenerationConfig,
-    #[pyo3(get)]
-    pub camera: CameraConfig,
     #[pyo3(get, set)]
     #[derivative(Default(value = "1.0"))]
     pub render_delay_secs: f32,
@@ -396,15 +357,6 @@ impl GGConfig {
     #[setter(transition)]
     fn set_transition(&mut self, value: [f32; 4]) {
         self.agent.transition = value;
-    }
-
-    #[getter(scale)]
-    fn get_scale(&self) -> f32 {
-        self.camera.scale
-    }
-    #[setter(scale)]
-    fn set_scale(&mut self, value: f32) {
-        self.camera.scale = value;
     }
 
     #[getter(number)]
