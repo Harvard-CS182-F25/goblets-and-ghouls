@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
-use rand::{SeedableRng, seq::IndexedRandom};
+use rand::{Rng, SeedableRng, seq::IndexedRandom};
 use std::collections::VecDeque;
 use wyrand::WyRand;
 
@@ -90,53 +90,80 @@ impl GameState {
         }
     }
 
-    fn chaser_action(board: &Board) -> Action {
+    fn adjacent_position(
+        position: (usize, usize),
+        action: Action,
+        width: usize,
+        height: usize,
+    ) -> Option<(usize, usize)> {
+        let (dx, dy) = match action {
+            Action::Up => (0, -1),
+            Action::Right => (1, 0),
+            Action::Down => (0, 1),
+            Action::Left => (-1, 0),
+        };
+        let next = (
+            position.0.saturating_add_signed(dx).clamp(0, width - 1),
+            position.1.saturating_add_signed(dy).clamp(0, height - 1),
+        );
+        (next != position).then_some(next)
+    }
+
+    fn shortest_chaser_actions(board: &Board) -> Vec<Action> {
+        const ACTIONS: [Action; 4] = [Action::Up, Action::Right, Action::Down, Action::Left];
+
         let ghost_pos = board
             .ghost_position
             .expect("Ghost position should be present");
-        let agent_pos = board.agent_position;
         let width = board.width;
         let height = board.height;
-
-        let mut queue = VecDeque::from([ghost_pos]);
-        let mut visited = vec![false; width * height];
-        let mut first_action = vec![None; width * height];
-        visited[ghost_pos.1 * width + ghost_pos.0] = true;
+        let mut distances = vec![None::<usize>; width * height];
+        let mut queue = VecDeque::from([board.agent_position]);
+        distances[board.agent_position.1 * width + board.agent_position.0] = Some(0);
 
         while let Some(position) = queue.pop_front() {
-            for action in Self::ordered_actions_toward(position, agent_pos) {
-                let (dx, dy) = match action {
-                    Action::Up => (0, -1),
-                    Action::Right => (1, 0),
-                    Action::Down => (0, 1),
-                    Action::Left => (-1, 0),
+            let distance = distances[position.1 * width + position.0]
+                .expect("Queued positions should have a distance");
+            for action in ACTIONS {
+                let Some(next) = Self::adjacent_position(position, action, width, height) else {
+                    continue;
                 };
-
-                let next = (
-                    position.0.saturating_add_signed(dx).clamp(0, width - 1),
-                    position.1.saturating_add_signed(dy).clamp(0, height - 1),
-                );
-
-                if next == position || board.wall_positions.contains(&next) {
+                if board.wall_positions.contains(&next) {
                     continue;
                 }
 
                 let next_idx = next.1 * width + next.0;
-                if visited[next_idx] {
-                    continue;
+                if distances[next_idx].is_none() {
+                    distances[next_idx] = Some(distance + 1);
+                    queue.push_back(next);
                 }
-
-                visited[next_idx] = true;
-                first_action[next_idx] =
-                    Some(first_action[position.1 * width + position.0].unwrap_or(action));
-
-                if next == agent_pos {
-                    return first_action[next_idx].expect("The first action should be set");
-                }
-
-                queue.push_back(next);
             }
         }
+
+        let Some(distance) = distances[ghost_pos.1 * width + ghost_pos.0] else {
+            return Vec::new();
+        };
+
+        ACTIONS
+            .into_iter()
+            .filter(|&action| {
+                Self::adjacent_position(ghost_pos, action, width, height).is_some_and(|next| {
+                    !board.wall_positions.contains(&next)
+                        && distances[next.1 * width + next.0] == distance.checked_sub(1)
+                })
+            })
+            .collect()
+    }
+
+    fn chaser_action(board: &Board, rng: &mut impl Rng) -> Action {
+        if let Some(&action) = Self::shortest_chaser_actions(board).choose(rng) {
+            return action;
+        }
+
+        let ghost_pos = board
+            .ghost_position
+            .expect("Ghost position should be present");
+        let agent_pos = board.agent_position;
 
         Self::ordered_actions_toward(ghost_pos, agent_pos)
             .into_iter()
@@ -331,9 +358,7 @@ impl GameState {
                     .choose(&mut self.rng)
                     .expect("Should have at least one action")
             }
-            Some(GhostPolicy::Chaser) => {
-                Self::chaser_action(&self.board)
-            }
+            Some(GhostPolicy::Chaser) => Self::chaser_action(&state.board, &mut self.rng),
             Some(GhostPolicy::Teleop) => panic!(
                 "GhostPolicy::Teleop requires GameState::step_teleop() — the ghost's move must be supplied externally, so step()/next_state()/transition() cannot be used with this ghost policy"
             ),
@@ -600,5 +625,31 @@ mod tests {
 
         assert_eq!(next.board.agent_position, (0, 0));
         assert_eq!(next.board.ghost_position, Some((2, 1)));
+    }
+
+    #[test]
+    fn chaser_randomizes_equal_shortest_paths() {
+        let board = Board {
+            agent_position: (1, 1),
+            ghost_position: Some((0, 0)),
+            goblets: Vec::new(),
+            wall_positions: HashSet::new(),
+            width: 2,
+            height: 2,
+        };
+
+        assert_eq!(
+            GameState::shortest_chaser_actions(&board),
+            vec![Action::Right, Action::Down]
+        );
+
+        let actions = (0..32)
+            .map(|seed| {
+                let mut rng = WyRand::from_seed((seed as u64).to_ne_bytes());
+                GameState::chaser_action(&board, &mut rng)
+            })
+            .collect::<Vec<_>>();
+        assert!(actions.contains(&Action::Right));
+        assert!(actions.contains(&Action::Down));
     }
 }
