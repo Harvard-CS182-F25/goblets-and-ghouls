@@ -29,14 +29,9 @@ pub struct WallBundle {
 }
 
 impl WallBundle {
-    pub fn new(endpoint1: Vec2, endpoint2: Vec2) -> Self {
-        let diff = endpoint2 - endpoint1;
-        let center = (endpoint1 + endpoint2) * 0.5;
-        let yaw = diff.y.atan2(diff.x);
-
+    pub fn new(center: Vec2) -> Self {
         let position =
-            Transform::from_translation(Vec3::new(center.x, WALL_HEIGHT / 2.0, center.y))
-                .with_rotation(Quat::from_rotation_y(yaw));
+            Transform::from_translation(Vec3::new(center.x, WALL_HEIGHT / 2.0, center.y));
 
         Self {
             wall: Wall,

@@ -35,8 +35,7 @@ impl CameraZoomLimits {
     pub fn new(board_size: Vec2, cell_size: f32, viewport_size: Vec2, initial_scale: f32) -> Self {
         let initial_scale = initial_scale.abs();
         Self {
-            // Preserve a deliberately closer initial view, but prevent further
-            // zooming once a cell reaches the practical display-size limit.
+            // Prevent zooming in once a cell reaches the practical display-size limit.
             min_scale: (cell_size / MAX_CELL_SIZE_PX).min(initial_scale),
             max_scale: (fit_scale(board_size, viewport_size) * ZOOM_OUT_MARGIN).max(initial_scale),
         }

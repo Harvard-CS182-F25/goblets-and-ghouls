@@ -92,7 +92,9 @@ pub fn update_goblet_reward_labels(
     let label_size = cell_size / orthographic.scale.abs();
 
     for (label, mut font, mut node, mut visibility) in &mut labels {
-        if state.0.board.ghost_position == Some(label.position) {
+        if state.0.board.agent_position == label.position
+            || state.0.board.ghost_position == Some(label.position)
+        {
             *visibility = Visibility::Hidden;
             continue;
         }

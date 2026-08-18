@@ -28,7 +28,6 @@ pub struct GameState {
     /// by the ghost.
     #[pyo3(get)]
     pub done: bool,
-    pub active_player: Agent,
 
     pub initial_board: Box<Board>,
     pub rng: WyRand,
@@ -232,7 +231,7 @@ impl GameState {
     fn episode_seed(&self) -> u64 {
         self.rng_seed
     }
-    
+
     /// Returns a list of `width * height` game states where the agent's
     /// position is varied across all cells. Note that invalid states are not
     /// filtered out.
@@ -263,9 +262,7 @@ impl GameState {
     /// This step is not deterministic, and updates both the agent and the
     /// ghost's position using the episode seed. Fails for the Teleop ghost.
     pub fn step(&mut self, action: Action) -> GameState {
-        let state = self.transition(action);
-        assert_eq!(state.active_player, Agent::Player);
-        state
+        self.transition(action)
     }
 
     /// Returns a copy of the current game state with a fixed episode seed,
@@ -314,7 +311,6 @@ impl From<Board> for GameState {
             board: board.clone(),
             reward,
             done,
-            active_player: Agent::Player,
             initial_board: Box::new(board),
             rng: WyRand::from_seed(u64::from(seed).to_ne_bytes()),
             rng_seed: seed.into(),
@@ -339,7 +335,7 @@ impl GameState {
 
         let board = self
             .board
-            .transition(&mut self.rng, action, self.active_player, &self.config);
+            .transition(&mut self.rng, action, Agent::Player, &self.config);
 
         GameState::from(board).with_runtime_from(self)
     }

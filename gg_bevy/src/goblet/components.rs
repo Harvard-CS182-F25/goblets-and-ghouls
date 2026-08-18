@@ -1,12 +1,5 @@
 use bevy::prelude::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect)]
-pub enum FlagStatus {
-    Dropped,
-    PickedUp,
-    Captured,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Component, Reflect)]
 #[reflect(Component)]
 pub struct Goblet {
