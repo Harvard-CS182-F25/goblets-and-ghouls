@@ -13,7 +13,7 @@ pub use visual::*;
 pub struct GobletPlugin;
 impl Plugin for GobletPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreStartup, init_flag_and_capture_point_assets);
+        app.add_systems(PreStartup, init_goblet_assets);
         app.add_systems(
             Startup,
             (systems::spawn_goblets).in_set(StartupSets::Goblets),
@@ -22,7 +22,7 @@ impl Plugin for GobletPlugin {
     }
 }
 
-fn init_flag_and_capture_point_assets(mut commands: Commands, config: Res<ConfigResource>) {
+fn init_goblet_assets(mut commands: Commands, config: Res<ConfigResource>) {
     if !config.0.headless {
         commands.init_resource::<visual::GobletGraphicsAssets>();
     }

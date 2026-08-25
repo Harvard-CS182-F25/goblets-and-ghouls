@@ -283,7 +283,7 @@ pub fn spawn_walls(
                 (*row as f32 + 0.5) * cell - (world_height * 0.5),
             );
 
-            let mut entity = commands.spawn(WallBundle::new(p0.into(), p0.into()));
+            let mut entity = commands.spawn(WallBundle::new(p0.into()));
 
             if let (Some(meshes), Some(graphics)) = (&meshes, &graphics) {
                 entity.insert((

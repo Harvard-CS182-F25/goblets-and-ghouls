@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, PrimaryWindow, SystemCursorIcon};
 
-use crate::camera::{CameraZoomLimits, PanState, drag_delta, pan_and_clamp, shift_held};
+use crate::camera::{CameraZoomLimits, PanState, drag_delta, fit_scale, pan_and_clamp, shift_held};
 use crate::coords::world_dimensions;
 use crate::resources::{ConfigResource, GameStateResource};
 
@@ -17,13 +17,18 @@ pub fn setup_camera(
         return;
     }
 
-    let scale = config.0.camera.scale;
+    let cell_size = config.0.world_generation.cell_size;
+    let (board_width, board_height) =
+        world_dimensions(state.0.board.width, state.0.board.height, cell_size);
+    let board_size = Vec2::new(board_width, board_height);
+    let scale = windows
+        .single()
+        .map(|window| -fit_scale(board_size, Vec2::new(window.width(), window.height())))
+        .unwrap_or(-0.15);
+
     if let Ok(window) = windows.single() {
-        let cell_size = config.0.world_generation.cell_size;
-        let (board_width, board_height) =
-            world_dimensions(state.0.board.width, state.0.board.height, cell_size);
         commands.insert_resource(CameraZoomLimits::new(
-            Vec2::new(board_width, board_height),
+            board_size,
             cell_size,
             Vec2::new(window.width(), window.height()),
             scale,

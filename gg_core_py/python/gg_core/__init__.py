@@ -1,4 +1,4 @@
-from gg_core._core import run, parse_config, GameState, Action, AgentConfig, CameraConfig, EntityType, GGConfig
+from gg_core._core import run, parse_config, GameState, Action, AgentConfig, EntityType, GGConfig
 
 __all__ = [
     "run",
@@ -7,7 +7,6 @@ __all__ = [
     "GGConfig",
     "Action",
     "AgentConfig",
-    "CameraConfig",
     "EntityType",
 ]
 

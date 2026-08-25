@@ -12,7 +12,7 @@ pub mod world;
 pub use action::Action;
 pub use agent::Agent;
 pub use board::Board;
-pub use config::{AgentConfig, CameraConfig, GGConfig, GhostPolicy, GobletConfig, WorldGenerationConfig};
+pub use config::{AgentConfig, GGConfig, GhostPolicy, GobletConfig, WorldGenerationConfig};
 pub use entity_type::EntityType;
 pub use game_state::GameState;
 pub use goblet::Goblet;
