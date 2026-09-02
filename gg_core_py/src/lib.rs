@@ -1,9 +1,9 @@
 #[cfg(feature = "bevy")]
 mod bevy_runner;
 
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
 #[cfg(feature = "bevy")]
 use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3_stub_gen::{define_stub_info_gatherer, derive::gen_stub_pyfunction};
 use rand::SeedableRng;
@@ -40,11 +40,11 @@ fn run(
         ));
     }
 
-    let generation_seed = if let Some(seed) = config.generation_seed {
+    let generation_seed = if let Some(seed) = config.world_generation.seed {
         seed
     } else {
         let seed = rand::random::<u32>();
-        config.generation_seed = Some(seed);
+        config.world_generation.seed = Some(seed);
         seed
     };
 
@@ -149,7 +149,11 @@ fn numpy_to_policy(py: Python<'_>, policy_any: &Py<PyAny>) -> PyResult<gg_core::
         }
     }
 
-    Ok(gg_core::Policy::from_agent_grid(agent_actions, width, height))
+    Ok(gg_core::Policy::from_agent_grid(
+        agent_actions,
+        width,
+        height,
+    ))
 }
 
 /// Converts an incoming value-function array into a [`gg_core::ValueGrid`].
@@ -197,7 +201,11 @@ fn numpy_to_value_grid(py: Python<'_>, value_any: &Py<PyAny>) -> PyResult<gg_cor
         }
     }
 
-    Ok(gg_core::ValueGrid::from_agent_grid(agent_values, width, height))
+    Ok(gg_core::ValueGrid::from_agent_grid(
+        agent_values,
+        width,
+        height,
+    ))
 }
 
 #[pymodule]

@@ -319,9 +319,21 @@ pub fn setup_ui(mut commands: Commands) {
                         })
                         .with_children(|row| {
                             for (label, kind, color) in [
-                                ("Save", ExitDialogButton::Save, Color::srgb(0.302, 0.784, 0.376)),
-                                ("Discard", ExitDialogButton::Discard, Color::srgb(0.863, 0.275, 0.275)),
-                                ("Cancel", ExitDialogButton::Cancel, Color::srgb(0.4, 0.4, 0.45)),
+                                (
+                                    "Save",
+                                    ExitDialogButton::Save,
+                                    Color::srgb(0.302, 0.784, 0.376),
+                                ),
+                                (
+                                    "Discard",
+                                    ExitDialogButton::Discard,
+                                    Color::srgb(0.863, 0.275, 0.275),
+                                ),
+                                (
+                                    "Cancel",
+                                    ExitDialogButton::Cancel,
+                                    Color::srgb(0.4, 0.4, 0.45),
+                                ),
                             ] {
                                 row.spawn((
                                     Button,
@@ -356,7 +368,11 @@ pub fn sync_dirty_indicator(
     mut windows: Query<&mut Window>,
 ) {
     if let Ok(mut node) = q.single_mut() {
-        node.display = if state.dirty { Display::Flex } else { Display::None };
+        node.display = if state.dirty {
+            Display::Flex
+        } else {
+            Display::None
+        };
     }
 
     if let Ok(mut window) = windows.single_mut() {
@@ -389,15 +405,27 @@ pub fn sync_ui(
     mut btn_q: Query<(&ToolButtonBg, &mut BackgroundColor), Without<FilenameInputBox>>,
     mut info_q: Query<
         &mut Text,
-        (With<InfoText>, Without<MessageText>, Without<FilenameInputBox>),
+        (
+            With<InfoText>,
+            Without<MessageText>,
+            Without<FilenameInputBox>,
+        ),
     >,
     mut count_q: Query<
         (&AgentCountText, &mut Text, &mut TextColor),
-        (Without<InfoText>, Without<MessageText>, Without<FilenameInputBox>),
+        (
+            Without<InfoText>,
+            Without<MessageText>,
+            Without<FilenameInputBox>,
+        ),
     >,
     mut msg_q: Query<
         &mut Text,
-        (With<MessageText>, Without<InfoText>, Without<FilenameInputBox>),
+        (
+            With<MessageText>,
+            Without<InfoText>,
+            Without<FilenameInputBox>,
+        ),
     >,
     mut filename_q: Query<
         (&mut Text, &mut BackgroundColor),

@@ -65,7 +65,11 @@ impl EditorBoard {
             tiles[gr][gc] = EditorTile::Ghost;
         }
 
-        Ok(Self { tiles, width, height })
+        Ok(Self {
+            tiles,
+            width,
+            height,
+        })
     }
 
     /// Paint a tile, enforcing the single-agent / at-most-one-ghost constraint.
@@ -152,7 +156,9 @@ impl EditorBoard {
     }
 
     pub fn save_to_file(&self, path: &str) -> Result<(), String> {
-        self.to_world_file()?.to_file(path).map_err(|e| e.to_string())
+        self.to_world_file()?
+            .to_file(path)
+            .map_err(|e| e.to_string())
     }
 }
 
@@ -321,11 +327,7 @@ impl Plugin for EditorPlugin {
         );
         app.add_systems(
             PostUpdate,
-            (
-                board::sync_tiles,
-                board::sync_goblet_labels,
-                mark_dirty,
-            )
+            (board::sync_tiles, board::sync_goblet_labels, mark_dirty)
                 .run_if(resource_changed::<EditorBoard>),
         );
     }

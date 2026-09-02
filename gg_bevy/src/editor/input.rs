@@ -9,7 +9,7 @@ use crate::coords::raycast_to_grid_cell;
 use crate::scene::GroundPlane;
 
 use super::ui::{ExitDialogButton, FilenameInputBox};
-use super::{CELL_SIZE, PANEL_WIDTH, EditorBoard, EditorState, EditorTile, save_board};
+use super::{CELL_SIZE, EditorBoard, EditorState, EditorTile, PANEL_WIDTH, save_board};
 
 pub fn handle_keyboard(
     keys: Res<ButtonInput<KeyCode>>,
@@ -275,7 +275,10 @@ pub fn pan_camera(
     let dragging = shift_held(&keyboard_input) && mouse_button.pressed(MouseButton::Left);
     let delta = drag_delta(&mut pan_state, dragging, window.cursor_position());
 
-    let board_size = Vec2::new(board.width as f32 * CELL_SIZE, board.height as f32 * CELL_SIZE);
+    let board_size = Vec2::new(
+        board.width as f32 * CELL_SIZE,
+        board.height as f32 * CELL_SIZE,
+    );
     let window_size = Vec2::new((window.width() - PANEL_WIDTH).max(1.0), window.height());
     let padding = CELL_SIZE * PAN_PADDING_CELLS;
 

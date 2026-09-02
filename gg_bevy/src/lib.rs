@@ -1,7 +1,7 @@
 pub mod agent;
 pub mod camera;
-pub mod core;
 pub mod coords;
+pub mod core;
 pub mod debug;
 pub mod editor;
 pub mod game_state;

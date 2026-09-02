@@ -17,6 +17,14 @@ class AgentConfig:
     @name.setter
     def name(self, value: builtins.str) -> None: ...
     @property
+    def transition(self) -> builtins.list[builtins.float]:
+        r"""
+        Returns the probabilities that the agent's actual action are
+        [intended, right, back, left]. Entries must be nonnegative and sum to 1.
+        """
+    @transition.setter
+    def transition(self, value: builtins.list[builtins.float]) -> None: ...
+    @property
     def ghost_policy(self) -> typing.Optional[GhostPolicy]:
         r"""
         Returns the ghost's policy, if there is one.
@@ -40,14 +48,6 @@ class AgentConfig:
         """
     @ghost_occlusion.setter
     def ghost_occlusion(self, value: builtins.bool) -> None: ...
-    @property
-    def transition(self) -> builtins.list[builtins.float]:
-        r"""
-        Returns the probabilities that the agent's actual action are
-        [intended, right, back, left]. Entries must be nonnegative and sum to 1.
-        """
-    @transition.setter
-    def transition(self, value: builtins.list[builtins.float]) -> None: ...
     def __repr__(self) -> builtins.str: ...
     def __str__(self) -> builtins.str: ...
 
@@ -120,10 +120,6 @@ class GGConfig:
     @render_delay_secs.setter
     def render_delay_secs(self, value: builtins.float) -> None: ...
     @property
-    def generation_seed(self) -> typing.Optional[builtins.int]: ...
-    @generation_seed.setter
-    def generation_seed(self, value: typing.Optional[builtins.int]) -> None: ...
-    @property
     def episode_seed(self) -> typing.Optional[builtins.int]:
         r"""
         Optional episode seed used when constructing the initial game state.
@@ -137,14 +133,6 @@ class GGConfig:
         This controls the first episode's RNG, but `GameState.reset()` does
         not consult it unless a caller explicitly passes that seed back in.
         """
-    @property
-    def debug(self) -> builtins.bool: ...
-    @debug.setter
-    def debug(self, value: builtins.bool) -> None: ...
-    @property
-    def headless(self) -> builtins.bool: ...
-    @headless.setter
-    def headless(self, value: builtins.bool) -> None: ...
     @property
     def world_file(self) -> typing.Optional[builtins.str]:
         r"""
@@ -163,6 +151,14 @@ class GGConfig:
         dimensions/walls/goblets/agent/ghost positions come from the file);
         `world_generation.cell_size` still applies for rendering scale.
         """
+    @property
+    def debug(self) -> builtins.bool: ...
+    @debug.setter
+    def debug(self, value: builtins.bool) -> None: ...
+    @property
+    def headless(self) -> builtins.bool: ...
+    @headless.setter
+    def headless(self, value: builtins.bool) -> None: ...
     @property
     def name(self) -> builtins.str: ...
     @name.setter
@@ -191,6 +187,10 @@ class GGConfig:
     def max_reward(self) -> builtins.int: ...
     @max_reward.setter
     def max_reward(self, value: builtins.int) -> None: ...
+    @property
+    def seed(self) -> typing.Optional[builtins.int]: ...
+    @seed.setter
+    def seed(self, value: typing.Optional[builtins.int]) -> None: ...
     @property
     def world_width(self) -> builtins.float: ...
     @world_width.setter
@@ -334,6 +334,10 @@ class WorldGenerationConfig:
     Stores the configuration of the gridworld.
     """
     @property
+    def seed(self) -> typing.Optional[builtins.int]: ...
+    @seed.setter
+    def seed(self, value: typing.Optional[builtins.int]) -> None: ...
+    @property
     def world_width(self) -> builtins.float: ...
     @world_width.setter
     def world_width(self, value: builtins.float) -> None: ...
@@ -341,6 +345,10 @@ class WorldGenerationConfig:
     def world_height(self) -> builtins.float: ...
     @world_height.setter
     def world_height(self, value: builtins.float) -> None: ...
+    @property
+    def cell_size(self) -> builtins.float: ...
+    @cell_size.setter
+    def cell_size(self, value: builtins.float) -> None: ...
     @property
     def num_obstacles(self) -> builtins.int:
         r"""
@@ -355,10 +363,6 @@ class WorldGenerationConfig:
         """
     @obstacle_radius_cells.setter
     def obstacle_radius_cells(self, value: builtins.int) -> None: ...
-    @property
-    def cell_size(self) -> builtins.float: ...
-    @cell_size.setter
-    def cell_size(self, value: builtins.float) -> None: ...
     @property
     def size(self) -> tuple[builtins.int, builtins.int]:
         r"""

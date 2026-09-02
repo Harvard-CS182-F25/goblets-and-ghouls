@@ -122,8 +122,9 @@ impl Board {
             .into_iter()
             .map(|position| Goblet {
                 position,
-                reward: rng
-                    .random_range(-(config.goblets.max_reward as i32)..=(config.goblets.max_reward as i32)),
+                reward: rng.random_range(
+                    -(config.goblets.max_reward as i32)..=(config.goblets.max_reward as i32),
+                ),
             })
             .collect::<Vec<_>>();
 
@@ -332,7 +333,10 @@ mod tests {
 
         assert_eq!(board.effective_ghost_position(false), (4, 0));
         assert_eq!(board.effective_ghost_position(true), (0, 0));
-        assert_eq!(board.observed_ghost_position_for((0, 0), false), Some((4, 0)));
+        assert_eq!(
+            board.observed_ghost_position_for((0, 0), false),
+            Some((4, 0))
+        );
         assert_eq!(board.observed_ghost_position_for((0, 0), true), None);
     }
 
@@ -357,11 +361,12 @@ mod tests {
                 max_reward: 10,
             },
             world_generation: crate::config::WorldGenerationConfig {
+                seed: None,
                 world_width: 25.0,
                 world_height: 25.0,
+                cell_size: 5.0,
                 num_obstacles: 0,
                 obstacle_radius_cells: 1,
-                cell_size: 5.0,
             },
             ..Default::default()
         };

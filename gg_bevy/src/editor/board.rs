@@ -5,9 +5,11 @@ use crate::agent::AgentGraphicsAssets;
 use crate::camera::{CameraZoomLimits, fit_scale};
 use crate::coords::{cell_to_world, world_dimensions};
 use crate::goblet::GobletGraphicsAssets;
-use crate::scene::{AGENT_HEIGHT, GHOST_HEIGHT, GOBLET_HEIGHT, WALL_HEIGHT, GroundPlane, WallGraphicsAssets};
+use crate::scene::{
+    AGENT_HEIGHT, GHOST_HEIGHT, GOBLET_HEIGHT, GroundPlane, WALL_HEIGHT, WallGraphicsAssets,
+};
 
-use super::{CELL_SIZE, PANEL_WIDTH, EditorBoard, EditorState, EditorTile};
+use super::{CELL_SIZE, EditorBoard, EditorState, EditorTile, PANEL_WIDTH};
 
 const GRID_LINE_WIDTH: f32 = 0.2;
 const GRID_LINE_HEIGHT: f32 = 0.02;
@@ -166,8 +168,13 @@ fn apply_tile_visual(
             entity.remove::<(Mesh3d, MeshMaterial3d<StandardMaterial>)>();
         }
         EditorTile::Wall => {
-            let translation =
-                cell_to_world(position, CELL_SIZE, world_width, world_height, WALL_HEIGHT / 2.0);
+            let translation = cell_to_world(
+                position,
+                CELL_SIZE,
+                world_width,
+                world_height,
+                WALL_HEIGHT / 2.0,
+            );
             entity.insert((
                 Mesh3d(tile_meshes.wall.clone()),
                 MeshMaterial3d(wall_graphics.material.clone()),

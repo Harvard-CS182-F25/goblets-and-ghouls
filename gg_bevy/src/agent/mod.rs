@@ -40,7 +40,8 @@ impl Plugin for AgentPlugin {
                 // render_delay_secs / the policy timer only drives stepping
                 // when the ghost isn't teleop-controlled; in Teleop mode the
                 // human's keypress is what advances the simulation instead.
-                systems::evaluate_policy.run_if(|config: Res<ConfigResource>| !ghost_is_teleop(config)),
+                systems::evaluate_policy
+                    .run_if(|config: Res<ConfigResource>| !ghost_is_teleop(config)),
                 systems::adjust_simulation_speed
                     .run_if(|config: Res<ConfigResource>| !ghost_is_teleop(config)),
                 systems::evaluate_policy_teleop.run_if(ghost_is_teleop),

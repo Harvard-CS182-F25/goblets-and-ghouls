@@ -220,7 +220,10 @@ impl GameState {
             .wall_positions
             .iter()
             .copied()
-            .filter(|&wall| self.board.has_line_of_sight(self.board.agent_position, wall))
+            .filter(|&wall| {
+                self.board
+                    .has_line_of_sight(self.board.agent_position, wall)
+            })
             .collect::<Vec<_>>();
         visible_wall_positions.sort_unstable();
         visible_wall_positions
@@ -593,7 +596,11 @@ mod tests {
         let states = state.all_states();
 
         assert_eq!(states.len(), 6);
-        assert!(states.iter().all(|s| s.board.ghost_position == Some((4, 4))));
+        assert!(
+            states
+                .iter()
+                .all(|s| s.board.ghost_position == Some((4, 4)))
+        );
         assert!(states.iter().all(|s| s.rng_seed == 1234));
     }
 

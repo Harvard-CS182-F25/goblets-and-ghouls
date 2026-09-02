@@ -122,8 +122,11 @@ pub fn pan_camera(
     let delta = drag_delta(&mut pan_state, dragging, window.cursor_position());
 
     let cell_size = config.0.world_generation.cell_size;
-    let (board_w, board_h) =
-        world_dimensions(game_state.0.board.width, game_state.0.board.height, cell_size);
+    let (board_w, board_h) = world_dimensions(
+        game_state.0.board.width,
+        game_state.0.board.height,
+        cell_size,
+    );
     let board_size = Vec2::new(board_w, board_h);
     let window_size = Vec2::new(window.width(), window.height());
     let padding = cell_size * PAN_PADDING_CELLS;

@@ -5,7 +5,10 @@ use bevy::prelude::*;
 
 /// Physical world extents for a board of the given cell dimensions.
 pub fn world_dimensions(board_width: usize, board_height: usize, cell_size: f32) -> (f32, f32) {
-    (board_width as f32 * cell_size, board_height as f32 * cell_size)
+    (
+        board_width as f32 * cell_size,
+        board_height as f32 * cell_size,
+    )
 }
 
 /// Converts a grid cell to a world-space position, centered on the board.

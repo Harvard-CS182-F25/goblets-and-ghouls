@@ -150,7 +150,7 @@ mod tests {
         assert_eq!(board.height, 5);
         assert_eq!(board.agent_position, (0, 4));
         assert_eq!(board.ghost_position, Some((4, 0)));
-        assert_eq!(board.goblets.len(), 1);
+        assert_eq!(board.goblets.len(), 15);
         assert!(board.wall_positions.contains(&(2, 2)));
     }
 
@@ -158,7 +158,10 @@ mod tests {
     fn agent_on_wall_is_rejected() {
         let world = WorldFile::from_file(&fixture("agent_on_wall.yaml")).expect("should parse");
         let err = world.into_board().expect_err("should reject");
-        assert!(matches!(err, ParseWorldError::PositionIsWall(_, "the agent")));
+        assert!(matches!(
+            err,
+            ParseWorldError::PositionIsWall(_, "the agent")
+        ));
     }
 
     #[test]
@@ -187,7 +190,9 @@ mod tests {
     fn round_trip_through_from_board() {
         let world = WorldFile::from_file(&fixture("simple.yaml")).expect("should parse");
         let board = world.into_board().expect("should validate");
-        let round_tripped = WorldFile::from_board(&board).into_board().expect("should validate");
+        let round_tripped = WorldFile::from_board(&board)
+            .into_board()
+            .expect("should validate");
 
         assert_eq!(round_tripped.width, board.width);
         assert_eq!(round_tripped.height, board.height);

@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use gg_core::{GGConfig, GameState, Policy, ValueGrid};
 
-use crate::resources::{ConfigResource, GameStateResource, HeatmapResource, PolicyResource, PolicyTimer};
+use crate::resources::{
+    ConfigResource, GameStateResource, HeatmapResource, PolicyResource, PolicyTimer,
+};
 use crate::{agent, camera, debug, game_state, goblet, scene};
 
 #[derive(SystemSet, Debug, Clone, Hash, PartialEq, Eq)]

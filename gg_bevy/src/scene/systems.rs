@@ -27,7 +27,8 @@ pub fn setup_key_instructions(
         None => format!(
             "Generation Seed: {}",
             config
-                .generation_seed
+                .world_generation
+                .seed
                 .expect("Should have generated a generation seed before spawning the HUD")
         ),
     };

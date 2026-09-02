@@ -22,11 +22,13 @@ pub enum GhostPolicy {
 #[pyclass(name = "AgentConfig")]
 #[derive(Debug, Clone, Derivative, Serialize, Deserialize)]
 #[derivative(Default)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 /// Stores the configuration of the agent and the ghost, if there is one.
 pub struct AgentConfig {
     #[derivative(Default(value = "\"Agent\".to_string()"))]
     pub name: String,
+
+    pub transition: [f32; 4],
 
     pub ghost_policy: Option<GhostPolicy>,
 
@@ -34,8 +36,6 @@ pub struct AgentConfig {
     pub ghost_penalty: i32,
 
     pub ghost_occlusion: bool,
-
-    pub transition: [f32; 4],
 }
 
 #[gen_stub_pymethods]
@@ -50,6 +50,18 @@ impl AgentConfig {
     #[setter]
     fn set_name(&mut self, value: String) {
         self.name = value;
+    }
+
+    /// Returns the probabilities that the agent's actual action are
+    /// [intended, right, back, left]. Entries must be nonnegative and sum to 1.
+    #[getter]
+    fn transition(&self) -> [f32; 4] {
+        self.transition
+    }
+
+    #[setter]
+    fn set_transition(&mut self, value: [f32; 4]) {
+        self.transition = value;
     }
 
     /// Returns the ghost's policy, if there is one.
@@ -88,18 +100,6 @@ impl AgentConfig {
         self.ghost_occlusion = value;
     }
 
-    /// Returns the probabilities that the agent's actual action are
-    /// [intended, right, back, left]. Entries must be nonnegative and sum to 1.
-    #[getter]
-    fn transition(&self) -> [f32; 4] {
-        self.transition
-    }
-
-    #[setter]
-    fn set_transition(&mut self, value: [f32; 4]) {
-        self.transition = value;
-    }
-
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("AgentConfig({})", self.__str__()?))
     }
@@ -118,7 +118,7 @@ impl AgentConfig {
 #[pyclass(name = "GobletConfig")]
 #[derive(Debug, Clone, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 /// Stores the configuration of all goblets.
 pub struct GobletConfig {
     #[derivative(Default(value = "1"))]
@@ -171,24 +171,36 @@ impl GobletConfig {
 #[pyclass(name = "WorldGenerationConfig")]
 #[derive(Debug, Clone, Derivative, Serialize, Deserialize)]
 #[derivative(Default)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 /// Stores the configuration of the gridworld.
 pub struct WorldGenerationConfig {
+    /// Optional seed for the procedural world-generation RNG.
+    pub seed: Option<u32>,
     #[derivative(Default(value = "100.0"))]
     pub world_width: f32,
     #[derivative(Default(value = "100.0"))]
     pub world_height: f32,
+    #[derivative(Default(value = "5.0"))]
+    pub cell_size: f32,
     #[derivative(Default(value = "5"))]
     pub num_obstacles: usize,
     #[derivative(Default(value = "3"))]
     pub obstacle_radius_cells: usize,
-    #[derivative(Default(value = "5.0"))]
-    pub cell_size: f32,
 }
 
 #[gen_stub_pymethods]
 #[pymethods]
 impl WorldGenerationConfig {
+    #[getter]
+    fn seed(&self) -> Option<u32> {
+        self.seed
+    }
+
+    #[setter]
+    fn set_seed(&mut self, value: Option<u32>) {
+        self.seed = value;
+    }
+
     #[getter]
     fn world_width(&self) -> f32 {
         self.world_width
@@ -207,6 +219,16 @@ impl WorldGenerationConfig {
     #[setter]
     fn set_world_height(&mut self, value: f32) {
         self.world_height = value;
+    }
+
+    #[getter]
+    fn cell_size(&self) -> f32 {
+        self.cell_size
+    }
+
+    #[setter]
+    fn set_cell_size(&mut self, value: f32) {
+        self.cell_size = value;
     }
 
     /// Returns the initial number of obstacles.
@@ -229,16 +251,6 @@ impl WorldGenerationConfig {
     #[setter]
     fn set_obstacle_radius_cells(&mut self, value: usize) {
         self.obstacle_radius_cells = value;
-    }
-
-    #[getter]
-    fn cell_size(&self) -> f32 {
-        self.cell_size
-    }
-
-    #[setter]
-    fn set_cell_size(&mut self, value: f32) {
-        self.cell_size = value;
     }
 
     /// Returns the size of the world as a (width, height) tuple.
@@ -268,7 +280,7 @@ impl WorldGenerationConfig {
 #[pyclass(name = "GGConfig")]
 #[derive(Debug, Clone, Serialize, Deserialize, Derivative)]
 #[derivative(Default)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 /// Represents the entire configuration of the game.
 pub struct GGConfig {
     #[pyo3(get)]
@@ -280,17 +292,11 @@ pub struct GGConfig {
     #[pyo3(get, set)]
     #[derivative(Default(value = "1.0"))]
     pub render_delay_secs: f32,
-    #[pyo3(get, set)]
-    pub generation_seed: Option<u32>,
     /// Optional episode seed used when constructing the initial game state.
     /// This controls the first episode's RNG, but `GameState.reset()` does
     /// not consult it unless a caller explicitly passes that seed back in.
     #[pyo3(get, set)]
     pub episode_seed: Option<u32>,
-    #[pyo3(get, set)]
-    pub debug: bool,
-    #[pyo3(get, set)]
-    pub headless: bool,
     /// Path to a YAML world file to load instead of procedurally generating
     /// a board. When set, `world_generation`'s `world_width`/`world_height`/
     /// `num_obstacles`/`obstacle_radius_cells` are ignored (the board's
@@ -298,6 +304,10 @@ pub struct GGConfig {
     /// `world_generation.cell_size` still applies for rendering scale.
     #[pyo3(get, set)]
     pub world_file: Option<String>,
+    #[pyo3(get, set)]
+    pub debug: bool,
+    #[pyo3(get, set)]
+    pub headless: bool,
 }
 
 // PyO3 can't expose a nested `#[pyclass]` field (e.g. `agent: AgentConfig`)
@@ -377,6 +387,15 @@ impl GGConfig {
         self.goblets.max_reward = value;
     }
 
+    #[getter(seed)]
+    fn get_seed(&self) -> Option<u32> {
+        self.world_generation.seed
+    }
+    #[setter(seed)]
+    fn set_seed(&mut self, value: Option<u32>) {
+        self.world_generation.seed = value;
+    }
+
     #[getter(world_width)]
     fn get_world_width(&self) -> f32 {
         self.world_generation.world_width
@@ -433,5 +452,30 @@ impl GGConfig {
                 e
             ))
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_nested_world_generation_seed() {
+        let config: GGConfig = serde_yaml::from_str("world_generation:\n  seed: 67\n")
+            .expect("nested seed should parse");
+
+        assert_eq!(config.world_generation.seed, Some(67));
+    }
+
+    #[test]
+    fn rejects_legacy_top_level_generation_seed() {
+        let error = serde_yaml::from_str::<GGConfig>("generation_seed: 67\n")
+            .expect_err("legacy seed path should be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("unknown field `generation_seed`")
+        );
     }
 }

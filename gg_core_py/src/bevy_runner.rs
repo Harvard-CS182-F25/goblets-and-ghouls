@@ -22,7 +22,9 @@ use gg_bevy::editor::EditorBoard;
 pub fn run_editor(load: Option<&str>, size: Option<&str>, out: Option<&str>) -> PyResult<()> {
     let board = match (load, size) {
         (Some(_), Some(_)) => {
-            return Err(PyTypeError::new_err("`load` and `size` are mutually exclusive"));
+            return Err(PyTypeError::new_err(
+                "`load` and `size` are mutually exclusive",
+            ));
         }
         (Some(path), None) => {
             EditorBoard::from_file(path).map_err(|e| PyRuntimeError::new_err(e.to_string()))?
@@ -42,7 +44,9 @@ pub fn run_editor(load: Option<&str>, size: Option<&str>, out: Option<&str>) -> 
             EditorBoard::new_empty(width, height)
         }
         (None, None) => {
-            return Err(PyTypeError::new_err("One of `load` or `size` must be provided"));
+            return Err(PyTypeError::new_err(
+                "One of `load` or `size` must be provided",
+            ));
         }
     };
 
